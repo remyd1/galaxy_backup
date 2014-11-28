@@ -124,7 +124,7 @@ def create_users(users, restore_purged, restore_deleted, verbose):
             new_user.deleted = user['deleted']
             new_user.purged = user['purged']
             new_user.active = user['active']
-            if restore_purged is True and restore_deleted is True:
+            if user['deleted'] is False and user['purged'] is False:
                 sa_session.add( new_user )
             elif restore_purged is True and user['purged'] is True:
                 sa_session.add( new_user )
@@ -173,13 +173,13 @@ def create_histories(histories, restore_purged, restore_deleted, verbose):
                 except:
                     # dataset not found (does not exist yet)
                     pass
-            if restore_purged is True and restore_deleted is True:
+            if history['deleted'] is False and history['purged'] is False:
                 sa_session.add( new_history )
                 ## perhaps, a better choice would be to use 'History' copy method, like that:
                 # new_history.copy( history['name'], history['user'], True, False )
-            elif restore_deleted is True and new_history.deleted is True:
+            elif restore_deleted is True and history['deleted'] is True:
                 sa_session.add( new_history )
-            elif restore_purged is True and new_history.purged is True:
+            elif restore_purged is True and history['purged'] is True:
                 sa_session.add( new_history )
 
             sa_session.flush()
@@ -217,7 +217,7 @@ def create_workflows(workflows, restore_purged, restore_deleted, verbose):
                 the_workflow = sa_session.query(Workflow).get(wfs['workflow_id'])
                 if the_workflow:
                     the_workflowStep.Workflow = the_workflow
-                #~ the_workflowStep.workflow_id = wfs['workflow_id']
+                the_workflowStep.workflow_id = wfs['workflow_id']
                 the_workflowStep.position = wfs['position']
                 the_workflowStep.tool_errors = wfs['tool_errors']
                 the_workflowStep.tool_inputs = wfs['tool_inputs']
@@ -309,18 +309,63 @@ def create_workflows(workflows, restore_purged, restore_deleted, verbose):
 
 
 def create_datasets(datasets, restore_purged, restore_deleted, verbose):
+    """
+    Create datasets
+    """
     if verbose:
         print("\n ####### DATASETS #######")
     for dataset in datasets:
         if verbose:
             print("A new dataset has been discovered; id: %s" %( dataset['id']) )
-
+        new_dataset = Dataset()
+        new_dataset.id = dataset['id']
+        new_dataset.state = dataset['state']
+        new_dataset.deleted = dataset['deleted']
+        new_dataset.purged = dataset['purged']
+        new_dataset.external_filename = dataset['external_filename']
+        new_dataset.purgable = dataset['purgable']
+        new_dataset.file_size = dataset['file_size']
+        new_dataset.extra_files_path = dataset['extra_files_path']
+        new_dataset.external_extra_files_path = dataset['external_extra_files_path']
+        if restore_deleted is True and dataset['deleted'] is True:
+            sa_session.add(new_dataset)
+        elif restore_purged is True and dataset['purged'] is True:
+            sa_session.add(new_dataset)
+        elif dataset['purged'] is False and dataset['deleted'] is False:
+            sa_session.add(new_dataset)
+        sa_session.flush()
 
 
 def create_libraries(libraries, restore_purged, restore_deleted, verbose):
-    print("\n ####### LIBRARIES #######")
-    for librarie in libraries:
-        print("A new librarie has been discovered: %s" %( librarie['name']) )
+    """
+    Create libraries
+    """
+    if verbose:
+        print("\n ####### LIBRARIES #######")
+    for library in libraries:
+        if verbose:
+            print("A new librarie has been discovered: %s" %( library['name']) )
+        new_library = Library()
+        new_library.name = library['name']
+        new_library.description = library['description']
+        new_library.synopsis = library['synopsis']
+        new_library.root_folder = library['root_folder']
+        new_library.deleted = library['deleted']
+        new_library.id = library['id']
+        if library.has_key('root_folder_id'):
+            new_libFolder = LibraryFolder()
+            new_libFolder.id = library['root_folder.id']
+            new_libFolder.name = library['root_folder.name']
+            new_libFolder.description = library['root_folder.description']
+            new_libFolder.item_count = library['root_folder.item_count']
+            new_libFolder.order_id = library['root_folder.order_id']
+            new_libFolder.genome_build = library['root_folder.genome_build']
+            sa_session.add( new_libFolder )
+        if restore_deleted is True and library['deleted'] is True:
+            sa_session.add(new_library)
+        elif library['deleted'] is False:
+            sa_session.add(new_library)
+        sa_session.flush()
 
 
 
