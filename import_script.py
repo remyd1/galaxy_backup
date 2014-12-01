@@ -349,17 +349,18 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
         new_library.name = library['name']
         new_library.description = library['description']
         new_library.synopsis = library['synopsis']
-        new_library.root_folder = library['root_folder']
-        new_library.deleted = library['deleted']
+        library['deleted'] = False
+        if library.has_key('deleted'):
+            new_library.deleted = library['deleted']
         new_library.id = library['id']
         if library.has_key('root_folder_id'):
             new_libFolder = LibraryFolder()
-            new_libFolder.id = library['root_folder.id']
-            new_libFolder.name = library['root_folder.name']
-            new_libFolder.description = library['root_folder.description']
-            new_libFolder.item_count = library['root_folder.item_count']
-            new_libFolder.order_id = library['root_folder.order_id']
-            new_libFolder.genome_build = library['root_folder.genome_build']
+            new_libFolder.id = library['root_folder_id']
+            new_libFolder.name = library['root_folder_name']
+            new_libFolder.description = library['root_folder_description']
+            new_libFolder.item_count = library['root_folder_item_count']
+            new_libFolder.order_id = library['root_folder_order_id']
+            new_libFolder.genome_build = library['root_folder_genome_build']
             sa_session.add( new_libFolder )
         if restore_deleted is True and library['deleted'] is True:
             sa_session.add(new_library)
