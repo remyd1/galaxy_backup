@@ -217,7 +217,7 @@ def retrieve_libraryDatasetDatasetAssociations(nd,np):
     Retrieve LibraryDataset objects
     """
     libraryDatasetDatasetAssociations = []
-    libraryDatasetDatasetAssociationRoot = {'LibraryDatasetDatasetAssociation':libraryDatasetDatasetAssociations}
+    libraryDatasetDatasetAssociationRoot = {'libraryDatasetDatasetAssociations':libraryDatasetDatasetAssociations}
 
     NUM_LDDA = sa_session.query(LibraryDatasetDatasetAssociation).count()
 

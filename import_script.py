@@ -22,6 +22,7 @@ TODO :
 import sys
 import os
 import argparse
+import datetime
 
 from json import loads
 
@@ -99,8 +100,8 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
         elif type_of_backup.has_key('datasets'):
             datasets = type_of_backup['datasets']
             create_datasets(datasets, restore_purged, restore_deleted, verbose)
-        elif type_of_backup.has_key('LibraryFolders'):
-            libraryFolders = type_of_backup['LibraryFolders']
+        elif type_of_backup.has_key('libraryFolders'):
+            libraryFolders = type_of_backup['libraryFolders']
             create_libraryFolders(libraryFolders, restore_purged, restore_deleted, verbose)
         elif type_of_backup.has_key('libraries'):
             libraries = type_of_backup['libraries']
@@ -108,8 +109,8 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
         elif type_of_backup.has_key('libraryDatasets'):
             libraryDatasets = type_of_backup['libraryDatasets']
             create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, verbose)
-        elif type_of_backup.has_key('LibraryDatasetDatasetAssociation'):
-            ldda = type_of_backup['LibraryDatasetDatasetAssociation']
+        elif type_of_backup.has_key('libraryDatasetDatasetAssociations'):
+            ldda = type_of_backup['libraryDatasetDatasetAssociations']
             create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_deleted, verbose)
 
 
@@ -397,17 +398,24 @@ def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, ver
     """
     if verbose:
         print("\n ####### libraryDatasets #######")
+
+    # retrieve all LibraryDataset(s)
+    all_current_ld = sa_session.query(LibraryDataset).all()
+    present = False
+
     for ld in libraryDatasets:
         if verbose:
             print("A new libraryDataset has been discovered: %s" %( ld['name']) )
-        name = ld['name'].encode('ascii', 'ignore')
-        print(type(name))
-        # check if this library already exists
-        ld_e = sa_session.query(LibraryDataset).filter(LibraryDataset.name == name).\
-        filter(LibraryDataset.id == ld['id']).count()
+        #~ name = ld['name'].encode('ascii', 'ignore')
+
+        for the_ld in all_current_ld:
+                if ld['name'] == the_ld.name and ld['misc_info'] == the_ld.info:
+                    if verbose:
+                        print("An existing LibraryDataset seems to already exists")
+                    present = True
         ld_e_id = sa_session.query(LibraryDataset).get(ld['id'])
         the_lf = sa_session.query(LibraryFolder).get(ld['folder_id'])
-        if ld_e == 0:
+        if present is False:
             new_ld = LibraryDataset()
             new_ld.name = ld['name']
             new_ld.info = ld['misc_info']
@@ -418,11 +426,10 @@ def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, ver
             if the_lf:
                 new_ld.folder = the_lf
             new_ld.parent_id = ld['parent_library_id']
-            new_ld.update_time = ld['update_time']
             new_ld.genome_build = ld['genome_build']
             new_ld.date_uploaded = ld['date_uploaded']
             new_ld.state = ld['state']
-            if the_ld.has_key('deleted'):
+            if ld.has_key('deleted'):
                 new_ld.deleted = ld['deleted']
             else:
                 ld['deleted'] = False
@@ -443,7 +450,7 @@ def create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_delet
         print("\n ####### libraryDatasetDatasetAssociations #######")
     for the_ldda in ldda:
         if verbose:
-            print("A new LibraryDatasetDatasetAssociation has been discovered: %s" %( ldda['name']) )
+            print("A new LibraryDatasetDatasetAssociation has been discovered: %s" %( the_ldda['name']) )
 
         # check if this library already exists
         the_ldda_e = sa_session.query(LibraryDatasetDatasetAssociation).\
@@ -514,7 +521,8 @@ def create_libraryFolders(libraryFolders, restore_purged, restore_deleted, verbo
             new_lf.item_count = lf['item_count']
             new_lf.order_id = lf['order_id']
             new_lf.parent_id = lf['parent_id']
-            new_lf.update_time = lf['update_time']
+            new_lf.update_time = datetime.datetime.strptime( lf['update_time'] , \
+            "%Y-%m-%d %H:%M:%S.%f" )
             if lf.has_key('deleted'):
                 new_lf.deleted = lf['deleted']
             else:
