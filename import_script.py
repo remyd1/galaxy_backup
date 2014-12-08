@@ -99,6 +99,9 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
         elif type_of_backup.has_key('datasets'):
             datasets = type_of_backup['datasets']
             create_datasets(datasets, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('LibraryFolders'):
+            libraryFolders = type_of_backup['LibraryFolders']
+            create_libraryFolders(libraryFolders, restore_purged, restore_deleted, verbose)
         elif type_of_backup.has_key('libraries'):
             libraries = type_of_backup['libraries']
             create_libraries(libraries, restore_purged, restore_deleted, verbose)
@@ -354,8 +357,8 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
             print("A new librarie has been discovered: %s" %( library['name']) )
 
         # check if this library already exists
-        library_e = sa_session.query(Library).filter(Library.name==library['name']).\
-        filter(Library.id==library['id']).count()
+        library_e = sa_session.query(Library).filter(Library.name == library['name']).\
+        filter(Library.id == library['id']).count()
         library_e_id = sa_session.query(Library).get(library['id'])
         if library_e == 0:
             new_library = Library()
@@ -368,14 +371,19 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
             if not library_e_id:
                 new_library.id = library['id']
             if library.has_key('root_folder_id'):
-                new_libFolder = LibraryFolder()
-                new_libFolder.id = library['root_folder_id']
-                new_libFolder.name = library['root_folder_name']
-                new_libFolder.description = library['root_folder_description']
-                new_libFolder.item_count = library['root_folder_item_count']
-                new_libFolder.order_id = library['root_folder_order_id']
-                new_libFolder.genome_build = library['root_folder_genome_build']
-                sa_session.add( new_libFolder )
+                # check if root_folder already exists (must be imported before)
+                the_lf = sa_session.query(LibraryFolder).get(ld['root_folder_id'])
+                if the_lf:
+                    new_library.root_folder = the_lf
+                else:
+                    new_libFolder = LibraryFolder()
+                    new_libFolder.id = library['root_folder_id']
+                    new_libFolder.name = library['root_folder_name']
+                    new_libFolder.description = library['root_folder_description']
+                    new_libFolder.item_count = library['root_folder_item_count']
+                    new_libFolder.order_id = library['root_folder_order_id']
+                    new_libFolder.genome_build = library['root_folder_genome_build']
+                    sa_session.add( new_libFolder )
             if restore_deleted is True and library['deleted'] is True:
                 sa_session.add(new_library)
             elif library['deleted'] is False:
@@ -385,27 +393,40 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
 
 def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, verbose):
     """
-    Create libraryDatasets objects
+    Create LibraryDataset objects
     """
     if verbose:
         print("\n ####### libraryDatasets #######")
     for ld in libraryDatasets:
         if verbose:
             print("A new libraryDataset has been discovered: %s" %( ld['name']) )
-
+        name = ld['name'].encode('ascii', 'ignore')
+        print(type(name))
         # check if this library already exists
-        ld_e = sa_session.query(LibraryDataset).filter(LibraryDataset.name==ld['name']).\
-        filter(LibraryDataset.id==ld['id']).count()
+        ld_e = sa_session.query(LibraryDataset).filter(LibraryDataset.name == name).\
+        filter(LibraryDataset.id == ld['id']).count()
         ld_e_id = sa_session.query(LibraryDataset).get(ld['id'])
+        the_lf = sa_session.query(LibraryFolder).get(ld['folder_id'])
         if ld_e == 0:
             new_ld = LibraryDataset()
             new_ld.name = ld['name']
-            #~ new_ld.folder = ld['...']
             new_ld.info = ld['misc_info']
-            ld['deleted'] = False
-            if ld.has_key('deleted'):
+            new_ld.blurb = ld['misc_blurb']
+            if ld.has_key('peek'):
+                new_ld.peek = ld['peek']
+            new_ld.dbkey = ld['metadata_dbkey']
+            if the_lf:
+                new_ld.folder = the_lf
+            new_ld.parent_id = ld['parent_library_id']
+            new_ld.update_time = ld['update_time']
+            new_ld.genome_build = ld['genome_build']
+            new_ld.date_uploaded = ld['date_uploaded']
+            new_ld.state = ld['state']
+            if the_ld.has_key('deleted'):
                 new_ld.deleted = ld['deleted']
-            if not library_e_id:
+            else:
+                ld['deleted'] = False
+            if not ld_e_id:
                 new_ld.id = ld['id']
             if restore_deleted is True and ld['deleted'] is True:
                 sa_session.add(new_ld)
@@ -416,7 +437,7 @@ def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, ver
 
 def create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_deleted, verbose):
     """
-    Create libraryDatasets objects
+    Create LibraryDatasetDatasetAssociation objects
     """
     if verbose:
         print("\n ####### libraryDatasetDatasetAssociations #######")
@@ -425,23 +446,87 @@ def create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_delet
             print("A new LibraryDatasetDatasetAssociation has been discovered: %s" %( ldda['name']) )
 
         # check if this library already exists
-        the_ldda_e = sa_session.query(LibraryDatasetDatasetAssociation).filter(LibraryDatasetDatasetAssociation.name==the_ldda['name']).\
-        filter(LibraryDatasetDatasetAssociation.id==the_ldda['id']).count()
-        the_ldda_e_id = sa_session.query(LibraryDatasetDatasetAssociation).get(the_ldda['id'])
+        the_ldda_e = sa_session.query(LibraryDatasetDatasetAssociation).\
+        filter(LibraryDatasetDatasetAssociation.name == the_ldda['name']).\
+        filter(LibraryDatasetDatasetAssociation.id == the_ldda['id']).count()
+        the_ldda_e_id = sa_session.query(LibraryDatasetDatasetAssociation).\
+        get(the_ldda['id'])
         if the_ldda_e == 0:
             new_ldda = LibraryDatasetDatasetAssociation()
             new_ldda.name = the_ldda['name']
+            new_ldda.info = the_ldda['misc_info']
+            new_ldda.blurb = the_ldda['misc_blurb']
+            if the_ldda.has_key('peek'):
+                new_ldda.peek = the_ldda['peek']
+            new_ldda.dbkey = the_ldda['metadata_dbkey']
+            new_ldda.extension = the_ldda['file_name'].rpartition(".")[-1]
+            # retrieving corresponding dataset if it exists
+            try:
+                the_dataset_e = sa_session.query(LibraryDatasetDatasetAssociation).\
+                filter(dataset.external_filename == the_ldda['file_name']).one()
+                new_ldda.dataset = the_dataset_e
+            except:
+                pass
+            if the_ldda.has_key('library_dataset_id'):
+                the_ld = sa_session.query(LibraryDataset).\
+                get(the_ldda['library_dataset_id'])
+                if the_ld:
+                    new_ldda.library_dataset = the_ld
+            #~ copied_from_history_dataset_association = new_ldda
+            #~ new_ldda.user = the_ldda['uuid']
+            new_ldda.parent_id = the_ldda['parent_library_id']
             new_ldda.description = the_ldda['description']
-            new_ldda.synopsis = the_ldda['synopsis']
-            the_ldda['deleted'] = False
+            new_ldda.update_time = the_ldda['update_time']
+            new_ldda.genome_build = the_ldda['genome_build']
+            new_ldda.visible = the_ldda['visible']
             if the_ldda.has_key('deleted'):
                 new_ldda.deleted = the_ldda['deleted']
+            else:
+                the_ldda['deleted'] = False
             if not ldda_e_id:
                 new_ldda.id = the_ldda['id']
             if restore_deleted is True and the_ldda['deleted'] is True:
                 sa_session.add(new_ldda)
             elif the_ldda['deleted'] is False:
                 sa_session.add(new_ldda)
+            sa_session.flush()
+
+
+def create_libraryFolders(libraryFolders, restore_purged, restore_deleted, verbose):
+    """
+    Create LibraryFolder objects
+    """
+    if verbose:
+        print("\n ####### libraryFolders #######")
+    for lf in libraryFolders:
+        if verbose:
+            print("A new LibraryFolder has been discovered: %s" %( lf['name']) )
+
+        # check if this library already exists
+        lf_e = sa_session.query(LibraryFolder).filter(LibraryFolder.name == lf['name']).\
+        filter(LibraryFolder.id == lf['id']).count()
+        lf_e_id = sa_session.query(LibraryFolder).get(lf['id'])
+        if lf_e == 0:
+            new_lf = LibraryFolder()
+            new_lf.name = lf['name']
+            new_lf.description = lf['description']
+            new_lf.genome_build = lf['genome_build']
+            new_lf.item_count = lf['item_count']
+            new_lf.order_id = lf['order_id']
+            new_lf.parent_id = lf['parent_id']
+            new_lf.update_time = lf['update_time']
+            if lf.has_key('deleted'):
+                new_lf.deleted = lf['deleted']
+            else:
+                lf['deleted'] = False
+            if not lf_e_id:
+                # could be an issue if a new id is enerated
+                # (parent_id / relation with LibraryDataset...)
+                new_lf.id = lf['id']
+            if restore_deleted is True and lf['deleted'] is True:
+                sa_session.add(new_lf)
+            elif lf['deleted'] is False:
+                sa_session.add(new_lf)
             sa_session.flush()
 
 

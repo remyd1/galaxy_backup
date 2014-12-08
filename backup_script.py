@@ -508,10 +508,10 @@ if __name__ == '__main__':
             print( "%s LIB_DATASETS RETRIEVED" %(num_ld) )
             print( "%s LIB_DATASET_ASSOCIATIONS RETRIEVED" %(num_ldda) )
             print( "%s LIB_FOLDERS RETRIEVED" %(num_lf) )
+        backup.append(libraryFolders)
         backup.append(libraries)
         backup.append(libraryDatasets)
         backup.append(libraryDatasetDatasetAssociations)
-        backup.append(libraryFolders)
 
 
     backup = dumps(backup, default=decimal_default, sort_keys=True, indent=4)
