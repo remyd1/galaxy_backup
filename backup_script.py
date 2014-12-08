@@ -244,6 +244,8 @@ def retrieve_libraryDatasets(nd,np):
     all_LibraryDatasets = sa_session.query(LibraryDataset).filter_by(deleted='False')
     for ld in all_LibraryDatasets:
         lddict = ld.to_dict()
+        if hasattr(ld, 'order_id'):
+            lddict['order_id'] = ld.order_id
         libraryDatasets.append(lddict)
 
     return libraryDatasetsRoot, NUM_LD

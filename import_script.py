@@ -422,6 +422,8 @@ def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, ver
             new_ld.blurb = ld['misc_blurb']
             if ld.has_key('peek'):
                 new_ld.peek = ld['peek']
+            if ld.has_key('order_id'):
+                new_ld.order_id = ld['order_id']
             new_ld.dbkey = ld['metadata_dbkey']
             if the_lf:
                 new_ld.folder = the_lf
@@ -482,15 +484,15 @@ def create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_delet
             #~ copied_from_history_dataset_association = new_ldda
             #~ new_ldda.user = the_ldda['uuid']
             new_ldda.parent_id = the_ldda['parent_library_id']
-            new_ldda.description = the_ldda['description']
-            new_ldda.update_time = the_ldda['update_time']
+            new_ldda.update_time = datetime.datetime.strptime( the_ldda['update_time'] , \
+            "%Y-%m-%dT%H:%M:%S.%f" )
             new_ldda.genome_build = the_ldda['genome_build']
             new_ldda.visible = the_ldda['visible']
             if the_ldda.has_key('deleted'):
                 new_ldda.deleted = the_ldda['deleted']
             else:
                 the_ldda['deleted'] = False
-            if not ldda_e_id:
+            if not the_ldda_e_id:
                 new_ldda.id = the_ldda['id']
             if restore_deleted is True and the_ldda['deleted'] is True:
                 sa_session.add(new_ldda)
