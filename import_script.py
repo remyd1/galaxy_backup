@@ -102,6 +102,10 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
         elif type_of_backup.has_key('libraries'):
             libraries = type_of_backup['libraries']
             create_libraries(libraries, restore_purged, restore_deleted, verbose)
+            libraryDatasets = type_of_backup['libraryDatasets']
+            create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, verbose)
+            ldda = type_of_backup['LibraryDatasetDatasetAssociation']
+            create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_deleted, verbose)
 
 
 
@@ -132,7 +136,8 @@ def create_users(users, restore_purged, restore_deleted, verbose):
                 sa_session.add( new_user )
             sa_session.flush()
         else:
-            print( "This user already exists %s !" %( user['email'] ) )
+            if verbose:
+                print( "This user already exists %s !" %( user['email'] ) )
 
 
 
@@ -345,28 +350,97 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
     for library in libraries:
         if verbose:
             print("A new librarie has been discovered: %s" %( library['name']) )
-        new_library = Library()
-        new_library.name = library['name']
-        new_library.description = library['description']
-        new_library.synopsis = library['synopsis']
-        library['deleted'] = False
-        if library.has_key('deleted'):
-            new_library.deleted = library['deleted']
-        new_library.id = library['id']
-        if library.has_key('root_folder_id'):
-            new_libFolder = LibraryFolder()
-            new_libFolder.id = library['root_folder_id']
-            new_libFolder.name = library['root_folder_name']
-            new_libFolder.description = library['root_folder_description']
-            new_libFolder.item_count = library['root_folder_item_count']
-            new_libFolder.order_id = library['root_folder_order_id']
-            new_libFolder.genome_build = library['root_folder_genome_build']
-            sa_session.add( new_libFolder )
-        if restore_deleted is True and library['deleted'] is True:
-            sa_session.add(new_library)
-        elif library['deleted'] is False:
-            sa_session.add(new_library)
-        sa_session.flush()
+
+        # check if this library already exists
+        library_e = sa_session.query(Library).filter(Library.name==library['name']).\
+        filter(Library.id==library['id']).count()
+        library_e_id = sa_session.query(Library).get(library['id'])
+        if library_e == 0:
+            new_library = Library()
+            new_library.name = library['name']
+            new_library.description = library['description']
+            new_library.synopsis = library['synopsis']
+            library['deleted'] = False
+            if library.has_key('deleted'):
+                new_library.deleted = library['deleted']
+            if not library_e_id:
+                new_library.id = library['id']
+            if library.has_key('root_folder_id'):
+                new_libFolder = LibraryFolder()
+                new_libFolder.id = library['root_folder_id']
+                new_libFolder.name = library['root_folder_name']
+                new_libFolder.description = library['root_folder_description']
+                new_libFolder.item_count = library['root_folder_item_count']
+                new_libFolder.order_id = library['root_folder_order_id']
+                new_libFolder.genome_build = library['root_folder_genome_build']
+                sa_session.add( new_libFolder )
+            if restore_deleted is True and library['deleted'] is True:
+                sa_session.add(new_library)
+            elif library['deleted'] is False:
+                sa_session.add(new_library)
+            sa_session.flush()
+
+
+def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, verbose):
+    """
+    Create libraryDatasets objects
+    """
+    if verbose:
+        print("\n ####### libraryDatasets #######")
+    for ld in libraryDatasets:
+        if verbose:
+            print("A new libraryDataset has been discovered: %s" %( ld['name']) )
+
+        # check if this library already exists
+        ld_e = sa_session.query(LibraryDataset).filter(LibraryDataset.name==ld['name']).\
+        filter(LibraryDataset.id==ld['id']).count()
+        ld_e_id = sa_session.query(LibraryDataset).get(ld['id'])
+        if ld_e == 0:
+            new_ld = LibraryDataset()
+            new_ld.name = ld['name']
+            new_ld.description = ld['description']
+            new_ld.synopsis = ld['synopsis']
+            ld['deleted'] = False
+            if ld.has_key('deleted'):
+                new_ld.deleted = ld['deleted']
+            if not library_e_id:
+                new_ld.id = ld['id']
+            if restore_deleted is True and ld['deleted'] is True:
+                sa_session.add(new_ld)
+            elif ld['deleted'] is False:
+                sa_session.add(new_ld)
+            sa_session.flush()
+
+
+def create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_deleted, verbose):
+    """
+    Create libraryDatasets objects
+    """
+    if verbose:
+        print("\n ####### libraryDatasetDatasetAssociations #######")
+    for the_ldda in ldda:
+        if verbose:
+            print("A new LibraryDatasetDatasetAssociation has been discovered: %s" %( ldda['name']) )
+
+        # check if this library already exists
+        the_ldda_e = sa_session.query(LibraryDatasetDatasetAssociation).filter(LibraryDatasetDatasetAssociation.name==the_ldda['name']).\
+        filter(LibraryDatasetDatasetAssociation.id==the_ldda['id']).count()
+        the_ldda_e_id = sa_session.query(LibraryDatasetDatasetAssociation).get(the_ldda['id'])
+        if the_ldda_e == 0:
+            new_ldda = LibraryDatasetDatasetAssociation()
+            new_ldda.name = the_ldda['name']
+            new_ldda.description = the_ldda['description']
+            new_ldda.synopsis = the_ldda['synopsis']
+            the_ldda['deleted'] = False
+            if the_ldda.has_key('deleted'):
+                new_ldda.deleted = the_ldda['deleted']
+            if not ldda_e_id:
+                new_ldda.id = the_ldda['id']
+            if restore_deleted is True and the_ldda['deleted'] is True:
+                sa_session.add(new_ldda)
+            elif the_ldda['deleted'] is False:
+                sa_session.add(new_ldda)
+            sa_session.flush()
 
 
 

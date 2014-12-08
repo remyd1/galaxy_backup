@@ -207,6 +207,43 @@ def retrieve_libraries(nd,np):
 
 
 
+def retrieve_libraryDatasetDatasetAssociations(nd,np):
+    """
+    Retrieve LibraryDataset objects
+    """
+    libraryDatasetDatasetAssociations = []
+    libraryDatasetDatasetAssociationRoot = {'LibraryDatasetDatasetAssociation':libraryDatasetDatasetAssociations}
+
+    NUM_LDDA = sa_session.query(LibraryDatasetDatasetAssociation).count()
+
+    ## LibraryDatasetDatasetAssociation
+    all_LibraryDatasetDatasetAssociation = sa_session.query(LibraryDatasetDatasetAssociation).filter_by(deleted='False')
+    for ld in all_LibraryDatasetDatasetAssociation:
+        lddict = ld.to_dict()
+        libraryDatasetDatasetAssociations.append(lddict)
+
+    return libraryDatasetDatasetAssociationRoot, NUM_LDDA
+
+
+
+def retrieve_libraryDatasets(nd,np):
+    """
+    Retrieve LibraryDataset objects
+    """
+    libraryDatasets = []
+    libraryDatasetsRoot = {'libraryDatasets':libraryDatasets}
+
+    NUM_LD = sa_session.query(LibraryDataset).count()
+
+    ## LibraryDataset
+    all_LibraryDatasets = sa_session.query(LibraryDataset).filter_by(deleted='False')
+    for ld in all_LibraryDatasets:
+        lddict = ld.to_dict()
+        libraryDatasets.append(lddict)
+
+    return libraryDatasetsRoot, NUM_LD
+
+
 def retrieve_users(nd,np):
     """
     Retrieve users from previous galaxy
@@ -435,10 +472,17 @@ if __name__ == '__main__':
 
     if backup2extract == "libraries" or backup2extract == "all":
         libraries, num_lib = retrieve_libraries(nd,np)
+        libraryDatasets, num_ld = retrieve_libraryDatasets(nd,np)
+        libraryDatasetDatasetAssociations, num_ldda = \
+        retrieve_libraryDatasetDatasetAssociations(nd,np)
         if verbose:
             print("\n####################################\n")
             print( "%s LIBRARIES RETRIEVED" %(num_lib) )
+            print( "%s LIB_DATASETS RETRIEVED" %(num_ld) )
+            print( "%s LIB_DATASET_ASSOCIATIONS RETRIEVED" %(num_ldda) )
         backup.append(libraries)
+        backup.append(libraryDatasets)
+        backup.append(libraryDatasetDatasetAssociations)
 
 
     backup = dumps(backup, default=decimal_default, sort_keys=True, indent=4)
