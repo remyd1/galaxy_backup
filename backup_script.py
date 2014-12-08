@@ -29,6 +29,7 @@ ideas for improvements
 from json import dumps
 
 import decimal
+#import datetime
 import argparse
 import sys
 import os
@@ -45,6 +46,10 @@ def decimal_default(obj):
     """
     Convert Decimal type object to a std float
     """
+    #if isinstance(obj, datetime.datetime):
+        # need to cast datetime object in string...
+    #    pass
+    #elif isinstance(obj, decimal.Decimal):
     if isinstance(obj, decimal.Decimal):
         return float(obj)
     raise TypeError(type(obj))
@@ -242,6 +247,27 @@ def retrieve_libraryDatasets(nd,np):
         libraryDatasets.append(lddict)
 
     return libraryDatasetsRoot, NUM_LD
+
+
+
+def retrieve_libraryFolders(nd,np):
+    """
+    Retrieve LibraryFolders objects
+    """
+    libraryFolders = []
+    libraryFoldersRoot = {'libraryFolders':libraryFolders}
+
+    NUM_LF = sa_session.query(LibraryFolder).count()
+
+    ## LibraryFolder
+    all_libraryFolders = sa_session.query(LibraryFolder).all()
+    for lf in all_libraryFolders:
+        lfdict = {'name':lf.name, 'id':lf.id, 'item_count':lf.item_count, 'order_id':lf.order_id, \
+        'description':lf.description, 'genome_build':lf.genome_build, 'update_time':str(lf.update_time), \
+        'parent_id':lf.parent_id}
+        libraryFolders.append(lfdict)
+
+    return libraryFoldersRoot, NUM_LF
 
 
 def retrieve_users(nd,np):
@@ -475,14 +501,17 @@ if __name__ == '__main__':
         libraryDatasets, num_ld = retrieve_libraryDatasets(nd,np)
         libraryDatasetDatasetAssociations, num_ldda = \
         retrieve_libraryDatasetDatasetAssociations(nd,np)
+        libraryFolders, num_lf = retrieve_libraryFolders(nd,np)
         if verbose:
             print("\n####################################\n")
             print( "%s LIBRARIES RETRIEVED" %(num_lib) )
             print( "%s LIB_DATASETS RETRIEVED" %(num_ld) )
             print( "%s LIB_DATASET_ASSOCIATIONS RETRIEVED" %(num_ldda) )
+            print( "%s LIB_FOLDERS RETRIEVED" %(num_lf) )
         backup.append(libraries)
         backup.append(libraryDatasets)
         backup.append(libraryDatasetDatasetAssociations)
+        backup.append(libraryFolders)
 
 
     backup = dumps(backup, default=decimal_default, sort_keys=True, indent=4)

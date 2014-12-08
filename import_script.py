@@ -102,8 +102,10 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
         elif type_of_backup.has_key('libraries'):
             libraries = type_of_backup['libraries']
             create_libraries(libraries, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('libraryDatasets'):
             libraryDatasets = type_of_backup['libraryDatasets']
             create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('LibraryDatasetDatasetAssociation'):
             ldda = type_of_backup['LibraryDatasetDatasetAssociation']
             create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_deleted, verbose)
 
@@ -398,8 +400,8 @@ def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, ver
         if ld_e == 0:
             new_ld = LibraryDataset()
             new_ld.name = ld['name']
-            new_ld.description = ld['description']
-            new_ld.synopsis = ld['synopsis']
+            #~ new_ld.folder = ld['...']
+            new_ld.info = ld['misc_info']
             ld['deleted'] = False
             if ld.has_key('deleted'):
                 new_ld.deleted = ld['deleted']
