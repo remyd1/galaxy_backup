@@ -122,11 +122,11 @@ def create_users(users, restore_purged, restore_deleted, verbose):
     if verbose:
         print("\n ####### USERS #######")
     for user in users:
-        if verbose:
-            print("A new user has been discovered: %s" %( user['email']) )
         # check if this user already exists
         user_e = sa_session.query(User).filter_by(email=user['email']).count()
         if user_e == 0:
+            if verbose:
+                print("A new user has been discovered: %s" %( user['email']) )
             new_user = User( user['email'], user['hashpassword'] )
             new_user.username = user['username']
             new_user.external = user['external']
@@ -155,8 +155,6 @@ def create_histories(histories, restore_purged, restore_deleted, verbose):
     if verbose:
         print("\n ####### HISTORIES #######")
     for history in histories:
-        if verbose:
-            print("A new history has been discovered: %s" %( history['name']) )
         try:
             the_owner = sa_session.query(User).filter_by(email=history['email']).one()
         except (MultipleResultsFound, NoResultFound) as e:
@@ -167,6 +165,8 @@ def create_histories(histories, restore_purged, restore_deleted, verbose):
         history_e = sa_session.query(History).filter(History.name == history['name']).\
         filter(User.email == history['email']).count()
         if history_e == 0:
+            if verbose:
+                print("A new history has been discovered: %s" %( history['name']) )
             ## transform back that dict to an History object with a new
             ## generated id to avoid any id overwritten
             new_history = History( None, history['name'], the_owner )
@@ -326,25 +326,34 @@ def create_datasets(datasets, restore_purged, restore_deleted, verbose):
     if verbose:
         print("\n ####### DATASETS #######")
     for dataset in datasets:
-        if verbose:
-            print("A new dataset has been discovered; id: %s" %( dataset['id']) )
-        new_dataset = Dataset()
-        new_dataset.id = dataset['id']
-        new_dataset.state = dataset['state']
-        new_dataset.deleted = dataset['deleted']
-        new_dataset.purged = dataset['purged']
-        new_dataset.external_filename = dataset['external_filename']
-        new_dataset.purgable = dataset['purgable']
-        new_dataset.file_size = dataset['file_size']
-        new_dataset.extra_files_path = dataset['extra_files_path']
-        new_dataset.external_extra_files_path = dataset['external_extra_files_path']
-        if restore_deleted is True and dataset['deleted'] is True:
-            sa_session.add(new_dataset)
-        elif restore_purged is True and dataset['purged'] is True:
-            sa_session.add(new_dataset)
-        elif dataset['purged'] is False and dataset['deleted'] is False:
-            sa_session.add(new_dataset)
-        sa_session.flush()
+        #check if this dataset already exists
+        dataset_e = sa_session.query(Dataset).\
+        filter(Dataset.external_filename == Dataset['external_filename']).\
+        filter(Dataset.id == Dataset['id']).count()
+        if dataset_e == 0:
+            if verbose:
+                print("A new dataset has been discovered; id: %s" %( dataset['id']) )
+            new_dataset = Dataset()
+            new_dataset.id = dataset['id']
+            new_dataset.state = dataset['state']
+            new_dataset.deleted = dataset['deleted']
+            new_dataset.purged = dataset['purged']
+            new_dataset.external_filename = dataset['external_filename']
+            new_dataset.purgable = dataset['purgable']
+            new_dataset.file_size = dataset['file_size']
+            new_dataset.extra_files_path = dataset['extra_files_path']
+            new_dataset.external_extra_files_path = dataset['external_extra_files_path']
+            if restore_deleted is True and dataset['deleted'] is True:
+                sa_session.add(new_dataset)
+            elif restore_purged is True and dataset['purged'] is True:
+                sa_session.add(new_dataset)
+            elif dataset['purged'] is False and dataset['deleted'] is False:
+                sa_session.add(new_dataset)
+            sa_session.flush()
+        else:
+            if verbose:
+                print( "This dataset seems to already exists '%s' (id: %s) !" \
+                %(dataset['external_filename'], dataset['id']) )
 
 
 def create_libraries(libraries, restore_purged, restore_deleted, verbose):
@@ -354,14 +363,14 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
     if verbose:
         print("\n ####### LIBRARIES #######")
     for library in libraries:
-        if verbose:
-            print("A new librarie has been discovered: %s" %( library['name']) )
 
         # check if this library already exists
         library_e = sa_session.query(Library).filter(Library.name == library['name']).\
         filter(Library.id == library['id']).count()
         library_e_id = sa_session.query(Library).get(library['id'])
         if library_e == 0:
+            if verbose:
+                print("A new librarie has been discovered: %s" %( library['name']) )
             new_library = Library()
             new_library.name = library['name']
             new_library.description = library['description']
@@ -373,7 +382,7 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
                 new_library.id = library['id']
             if library.has_key('root_folder_id'):
                 # check if root_folder already exists (must be imported before)
-                the_lf = sa_session.query(LibraryFolder).get(ld['root_folder_id'])
+                the_lf = sa_session.query(LibraryFolder).get(library['root_folder_id'])
                 if the_lf:
                     new_library.root_folder = the_lf
                 else:
@@ -390,6 +399,11 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
             elif library['deleted'] is False:
                 sa_session.add(new_library)
             sa_session.flush()
+        else:
+            if verbose:
+                print( "This library seems to already exists '%s' (id: %s) !" \
+                %(library['name'], library['id']) )
+
 
 
 def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, verbose):
@@ -404,18 +418,19 @@ def create_libraryDatasets(libraryDatasets, restore_purged, restore_deleted, ver
     present = False
 
     for ld in libraryDatasets:
-        if verbose:
-            print("A new libraryDataset has been discovered: %s" %( ld['name']) )
         #~ name = ld['name'].encode('ascii', 'ignore')
 
         for the_ld in all_current_ld:
                 if ld['name'] == the_ld.name and ld['misc_info'] == the_ld.info:
                     if verbose:
-                        print("An existing LibraryDataset seems to already exists")
+                        print("An existing LibraryDataset seems to already exists: %s" \
+                        %( ld['name']) )
                     present = True
         ld_e_id = sa_session.query(LibraryDataset).get(ld['id'])
         the_lf = sa_session.query(LibraryFolder).get(ld['folder_id'])
         if present is False:
+            if verbose:
+                print("A new libraryDataset has been discovered: %s" %( ld['name']) )
             new_ld = LibraryDataset()
             new_ld.name = ld['name']
             new_ld.info = ld['misc_info']
@@ -451,8 +466,6 @@ def create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_delet
     if verbose:
         print("\n ####### libraryDatasetDatasetAssociations #######")
     for the_ldda in ldda:
-        if verbose:
-            print("A new LibraryDatasetDatasetAssociation has been discovered: %s" %( the_ldda['name']) )
 
         # check if this library already exists
         the_ldda_e = sa_session.query(LibraryDatasetDatasetAssociation).\
@@ -461,6 +474,8 @@ def create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_delet
         the_ldda_e_id = sa_session.query(LibraryDatasetDatasetAssociation).\
         get(the_ldda['id'])
         if the_ldda_e == 0:
+            if verbose:
+                print("A new LibraryDatasetDatasetAssociation has been discovered: %s" %( the_ldda['name']) )
             new_ldda = LibraryDatasetDatasetAssociation()
             new_ldda.name = the_ldda['name']
             new_ldda.info = the_ldda['misc_info']
@@ -508,14 +523,14 @@ def create_libraryFolders(libraryFolders, restore_purged, restore_deleted, verbo
     if verbose:
         print("\n ####### libraryFolders #######")
     for lf in libraryFolders:
-        if verbose:
-            print("A new LibraryFolder has been discovered: %s" %( lf['name']) )
 
         # check if this library already exists
         lf_e = sa_session.query(LibraryFolder).filter(LibraryFolder.name == lf['name']).\
         filter(LibraryFolder.id == lf['id']).count()
         lf_e_id = sa_session.query(LibraryFolder).get(lf['id'])
         if lf_e == 0:
+            if verbose:
+                print("A new LibraryFolder has been discovered: %s" %( lf['name']) )
             new_lf = LibraryFolder()
             new_lf.name = lf['name']
             new_lf.description = lf['description']
@@ -524,13 +539,13 @@ def create_libraryFolders(libraryFolders, restore_purged, restore_deleted, verbo
             new_lf.order_id = lf['order_id']
             new_lf.parent_id = lf['parent_id']
             new_lf.update_time = datetime.datetime.strptime( lf['update_time'] , \
-            "%Y-%m-%d %H:%M:%S.%f" )
+            "%Y-%m-%dT%H:%M:%S.%f" )
             if lf.has_key('deleted'):
                 new_lf.deleted = lf['deleted']
             else:
                 lf['deleted'] = False
             if not lf_e_id:
-                # could be an issue if a new id is enerated
+                # could be an issue if a new id is generated
                 # (parent_id / relation with LibraryDataset...)
                 new_lf.id = lf['id']
             if restore_deleted is True and lf['deleted'] is True:

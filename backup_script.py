@@ -33,6 +33,8 @@ import decimal
 import argparse
 import sys
 import os
+import datetime
+
 
 NUM_USERS = None
 
@@ -83,6 +85,108 @@ check_galaxy_root_dir()
 from scripts.db_shell import *
 
 
+
+
+def retrieve_apikeys(nd,np):
+    """
+    Retrieve API Keys()
+    """
+    apikeys = []
+    apikeysRoot = {'api_keys':apikeys}
+
+    NUM_KEYS = sa_session.query(APIKeys).count()
+    all_keys = sa_session.query(APIKeys).all()
+
+    for the_key in all_keys:
+        id = the_key.id
+        user_id = the_key.user_id
+        key = the_key.key
+        apikeys.append( { 'id':id, 'user_id':user_id, 'key':key })
+
+    return apikeysRoot, NUM_KEYS
+
+
+
+def retrieve_groups(nd,np):
+    """
+    Retrieve Groups()
+    """
+    groups = []
+    groupsRoot = {'groups':groups}
+
+    NUM_GROUPS = sa_session.query(Group).count()
+    all_groups = sa_session.query(Group).all()
+
+    for the_group in all_groups:
+        id = the_group.id
+        name = the_group.name
+        groups.append( { 'id':id, 'name':name })
+
+    return groupsRoot, NUM_GROUPS
+
+
+
+def retrieve_roles(nd,np):
+    """
+    Retrieve Roles()
+    """
+    roles = []
+    rolesRoot = {'roles':roles}
+
+    NUM_ROLES = sa_session.query(Role).count()
+    all_roles = sa_session.query(Role).all()
+
+    for the_role in all_roles:
+        id = the_role.id
+        name = the_role.name
+        description = the_role.description
+        role_type = the_role.type
+        deleted = the_role.deleted
+        if deleted is False:
+            roles.append( { 'id':id, 'name':name, 'description':description, \
+            'type':role_type, 'deleted':deleted })
+        elif deleted is True and nd is False:
+            roles.append( { 'id':id, 'name':name, 'description':description, \
+            'type':role_type, 'deleted':deleted })
+        else:
+            continue
+
+    return rolesRoot, NUM_ROLES
+
+
+
+def retrieve_associations():
+    """
+    Associations
+        #~ UserGroupAssociation
+        #~ UserRoleAssociation
+        #~ GroupRoleAssociation
+    """
+    all_UGAs = sa_session.query(UserGroupAssociation).all()
+    all_URAs = sa_session.query(UserRoleAssociation).all()
+    all_GRAs = sa_session.query(GroupRoleAssociation).all()
+    UGAs = []
+    URAs = []
+    GRAs = []
+    assoRoot = { 'UserGroupAssociation':UGAs, 'UserRoleAssociation':URAs, \
+    'GroupRoleAssociation':GRAs }
+
+    for uga in all_UGAs:
+        user_email = uga.user.email
+        group = uga.group.name
+        UGAs.append( { 'user_email':user_email, 'group':group } )
+
+    for ura in all_URAs:
+        user_email = ura.user.email
+        role = ura.role.name
+        URAs.append( { 'user_email':user_email, 'role':role } )
+
+    for gra in all_GRAs:
+        group = gra.group.name
+        role = gra.role.name
+        GRAs.append( { 'group':group, 'role':role } )
+
+    return assoRoot
 
 
 
@@ -264,8 +368,9 @@ def retrieve_libraryFolders(nd,np):
     ## LibraryFolder
     all_libraryFolders = sa_session.query(LibraryFolder).all()
     for lf in all_libraryFolders:
+        update_time = lf.update_time.isoformat()
         lfdict = {'name':lf.name, 'id':lf.id, 'item_count':lf.item_count, 'order_id':lf.order_id, \
-        'description':lf.description, 'genome_build':lf.genome_build, 'update_time':str(lf.update_time), \
+        'description':lf.description, 'genome_build':lf.genome_build, 'update_time':update_time, \
         'parent_id':lf.parent_id}
         libraryFolders.append(lfdict)
 
@@ -469,11 +574,22 @@ if __name__ == '__main__':
 
     if backup2extract == "users" or backup2extract == "all":
         users, num_users, clean_num_users = retrieve_users(nd,np)
+        api_keys, num_keys = retrieve_apikeys(nd,np)
+        roles, num_roles = retrieve_roles(nd,np)
+        groups, num_groups = retrieve_groups(nd,np)
+        associations = retrieve_associations()
         if verbose:
             print("\n####################################\n")
-            print("%s USERS RETRIEVED" %(num_users))
+            print( "%s USERS RETRIEVED" %(num_users) )
             print( "%s CLEAN USERS PROCESSED" %(clean_num_users) )
+            print( "%s API KEYS RETRIEVED" %(num_keys) )
+            print( "%s ROLES RETRIEVED" %(num_roles) )
+            print( "%s GROUPS RETRIEVED" %(num_groups) )
         backup.append(users)
+        backup.append(api_keys)
+        backup.append(roles)
+        backup.append(groups)
+        backup.append(associations)
 
     if backup2extract == "histories" or backup2extract == "all":
         histories, num_hist, clean_num_hist = retrieve_histories(nd,np)
