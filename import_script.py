@@ -85,12 +85,27 @@ def getjson(infile):
 
 def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
     """
-    Parse json and call the appropriate code to generate elements
+    Parse json and call the appropriate function to generate elements
     """
     for type_of_backup in jsondata:
         if type_of_backup.has_key('users'):
             users = type_of_backup['users']
             create_users(users, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('groups'):
+            groups = type_of_backup['groups']
+            create_groups(groups, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('roles'):
+            roles = type_of_backup['roles']
+            create_roles(roles, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('GroupRoleAssociation'):
+            GRAs = type_of_backup['GroupRoleAssociation']
+            create_gras(GRAs, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('UserGroupAssociation'):
+            UGAs = type_of_backup['UserGroupAssociation']
+            create_ugas(UGAs, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('UserRoleAssociation'):
+            URAs = type_of_backup['UserRoleAssociation']
+            create_uras(URAs, restore_purged, restore_deleted, verbose)
         elif type_of_backup.has_key('histories'):
             histories = type_of_backup['histories']
             create_histories(histories, restore_purged, restore_deleted, verbose)
@@ -144,6 +159,160 @@ def create_users(users, restore_purged, restore_deleted, verbose):
         else:
             if verbose:
                 print( "This user already exists %s !" %( user['email'] ) )
+
+
+
+def create_groups(groups, restore_purged, restore_deleted, verbose):
+    """
+    Create a new group
+    """
+    if verbose:
+        print("\n ####### GROUPS #######")
+    for group in groups:
+        # check if this group already exists
+        group_e = sa_session.query(Group).filter_by(name=group['name']).count()
+        if group_e == 0:
+            if verbose:
+                print("A new group has been discovered: %s" %( group['name']) )
+            new_group = Group( group['name'] )
+            new_group.deleted = group['deleted']
+            if group['deleted'] is False:
+                sa_session.add( new_group )
+            elif restore_deleted is True and group['deleted'] is True:
+                sa_session.add( new_group )
+            sa_session.flush()
+        else:
+            if verbose:
+                print( "This group already exists %s !" %( group['name'] ) )
+
+
+
+def create_roles(roles, restore_purged, restore_deleted, verbose):
+    """
+    Create a new role
+    """
+    if verbose:
+        print("\n ####### ROLES #######")
+    for role in roles:
+        # check if this role already exists
+        role_e = sa_session.query(Role).filter_by(name=role['name']).count()
+        if role_e == 0:
+            if verbose:
+                print("A new role has been discovered: %s" %( role['name']) )
+            new_role = Role( role['name'] )
+            new_role.deleted = role['deleted']
+            new_role.description = role['description']
+            new_role.type = role['type']
+            if role['deleted'] is False:
+                sa_session.add( new_role )
+            elif restore_deleted is True and role['deleted'] is True:
+                sa_session.add( new_role )
+            sa_session.flush()
+        else:
+            if verbose:
+                print( "This role already exists %s !" %( role['name'] ) )
+
+
+
+def create_gras(GRAs, restore_purged, restore_deleted, verbose):
+    """
+    Create a new GRA
+    """
+    if verbose:
+        print("\n ####### GroupRoleAssociation #######")
+    for gra in GRAs:
+        # check if this gra already exists
+        gra_e = sa_session.query(GroupRoleAssociation).filter(Role.name == \
+        gra['role']).filter(Group.name == gra['group']).count()
+        if gra_e == 0:
+            if verbose:
+                print("A new role has been discovered: %s" %( gra['name']) )
+            try:
+                the_group = sa_session.query(Group).filter_by(name=gra['group']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                print("You have an error when trying to retrieving the group of " + \
+                " this GroupRoleAssociation (%s)" % ( e ) )
+                continue
+            try:
+                the_role = sa_session.query(Role).filter_by(name=gra['role']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                print("You have an error when trying to retrieving the role of " + \
+                " this GroupRoleAssociation (%s)" % ( e ) )
+                continue
+            new_gra = GroupRoleAssociation( the_group, the_role )
+            sa_session.add( new_gra )
+            sa_session.flush()
+        else:
+            if verbose:
+                print( "This GroupRoleAssociation already exists %s !" %( gra['name'] ) )
+
+
+
+def create_ugas(UGAs, restore_purged, restore_deleted, verbose):
+    """
+    Create a new UGA
+    """
+    if verbose:
+        print("\n ####### UserGroupAssociation #######")
+    for uga in UGAs:
+        # check if this uga already exists
+        uga_e = sa_session.query(UserGroupAssociation).filter(User.email == \
+        uga['user_email']).filter(Group.name == uga['group']).count()
+        if uga_e == 0:
+            if verbose:
+                print("A new role has been discovered: %s" %( uga['name']) )
+            try:
+                the_group = sa_session.query(Group).filter_by(name=uga['group']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                print("You have an error when trying to retrieving the group of " + \
+                " this UserGroupAssociation (%s)" % ( e ) )
+                continue
+            try:
+                the_user = sa_session.query(User).filter_by(email=gra['user_email']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                print("You have an error when trying to retrieving the user (email)" + \
+                " of this UserGroupAssociation (%s)" % ( e ) )
+                continue
+            new_uga = UserGroupAssociation( the_user, the_group )
+            sa_session.add( new_uga )
+            sa_session.flush()
+        else:
+            if verbose:
+                print( "This UserGroupAssociation already exists %s !" %( uga['name'] ) )
+
+
+
+def create_uras(URAs, restore_purged, restore_deleted, verbose):
+    """
+    Create a new URA
+    """
+    if verbose:
+        print("\n ####### UserRoleAssociation #######")
+    for ura in URAs:
+        # check if this ura already exists
+        ura_e = sa_session.query(UserRoleAssociation).filter(Role.name == \
+        ura['role']).filter(User.email == ura['user_email']).count()
+        if ura_e == 0:
+            if verbose:
+                print("A new role has been discovered: %s" %( ura['name']) )
+            try:
+                the_role = sa_session.query(Role).filter_by(name=ura['role']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                print("You have an error when trying to retrieving the group of " + \
+                " this UserRoleAssociation (%s)" % ( e ) )
+                continue
+            try:
+                the_user = sa_session.query(User).filter_by(email=ura['user_email']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                print("You have an error when trying to retrieving the user (email)" + \
+                " of this UserRoleAssociation (%s)" % ( e ) )
+                continue
+            new_ura = UserRoleAssociation( the_user, the_role )
+            sa_session.add( new_ura )
+        else:
+            if verbose:
+                print( "This UserRoleAssociation already exists %s !" %( ura['name'] ) )
+
 
 
 

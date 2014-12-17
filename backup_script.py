@@ -120,7 +120,14 @@ def retrieve_groups(nd,np):
     for the_group in all_groups:
         id = the_group.id
         name = the_group.name
-        groups.append( { 'id':id, 'name':name })
+        deleted = the_group.deleted
+        if deleted is False:
+            groups.append( { 'id':id, 'name':name, 'deleted':deleted })
+        elif deleted is True and nd is False:
+            groups.append( { 'id':id, 'name':name, 'deleted':deleted })
+        else:
+            continue
+
 
     return groupsRoot, NUM_GROUPS
 
