@@ -339,49 +339,51 @@ def create_histories(histories, restore_purged, restore_deleted, verbose):
     if verbose:
         print("\n ####### HISTORIES #######")
     for history in histories:
-        try:
-            the_owner = sa_session.query(User).filter_by(email=history['email']).one()
-        except (MultipleResultsFound, NoResultFound) as e:
-            print("You have an error when trying to retrieving the owner of " + \
-            " this history (%s)" % ( e ) )
-            continue
-        ## retrieve history if it exists
-        history_e = sa_session.query(History).filter(History.name == history['name']).\
-        filter(User.email == history['email']).count()
-        if history_e == 0:
-            if verbose:
-                print("A new history has been discovered: %s" %( history['name']) )
-            ## transform back that dict to an History object with a new
-            ## generated id to avoid any id overwritten
-            new_history = History( None, history['name'], the_owner )
-            new_history.tags = history['tags']
-            new_history.deleted = history['deleted']
-            new_history.purged = history['purged']
-            new_history.importing = history['importing']
-            new_history.genome_build = history['genome_build']
-            new_history.published = history['published']
-            new_history.datasets = []
-            for dataset_name in history['datasetnames']:
-                try:
-                    new_history.datasets.append(sa_session.query(Dataset).\
-                    filter_by(external_filename=dataset_name).one())
-                except:
-                    # dataset not found (does not exist yet)
-                    pass
-            if history['deleted'] is False and history['purged'] is False:
-                sa_session.add( new_history )
-                ## perhaps, a better choice would be to use 'History' copy method, like that:
-                # new_history.copy( history['name'], history['user'], True, False )
-            elif restore_deleted is True and history['deleted'] is True:
-                sa_session.add( new_history )
-            elif restore_purged is True and history['purged'] is True:
-                sa_session.add( new_history )
+        if history['email'] is not "":
+            try:
+                the_owner = sa_session.query(User).filter_by(email=history['email']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                print("You have an error when trying to retrieving the owner of " + \
+                "this history (%s):%s" % ( history['name'], e ) )
+                continue
+            ## retrieve history if it exists
+            history_e = sa_session.query(History).filter(History.name == history['name']).\
+            filter(User.email == history['email']).count()
+            if history_e == 0:
+                if verbose:
+                    print("A new history has been discovered: %s" %( history['name']) )
+                ## transform back that dict to an History object with a new
+                ## generated id to avoid any id overwritten
+                new_history = History( None, history['name'], the_owner )
+                new_history.tags = history['tags']
+                new_history.deleted = history['deleted']
+                new_history.purged = history['purged']
+                new_history.importing = history['importing']
+                new_history.genome_build = history['genome_build']
+                new_history.published = history['published']
+                new_history.datasets = []
+                for dataset_name in history['datasetnames']:
+                    try:
+                        new_history.datasets.append(sa_session.query(Dataset).\
+                        filter_by(external_filename=dataset_name).one())
+                    except:
+                        # dataset not found (does not exist yet)
+                        pass
+                if history['deleted'] is False and history['purged'] is False:
+                    sa_session.add( new_history )
+                    ## perhaps, a better choice would be to use 'History' copy method,
+                    ## like that:
+                    # new_history.copy( history['name'], history['user'], True, False )
+                elif restore_deleted is True and history['deleted'] is True:
+                    sa_session.add( new_history )
+                elif restore_purged is True and history['purged'] is True:
+                    sa_session.add( new_history )
 
-            sa_session.flush()
-        else:
-            if verbose:
-                print( "This History seems to already exists '%s' (%s) !" \
-                %(history['name'], history['email']) )
+                sa_session.flush()
+            else:
+                if verbose:
+                    print( "This History seems to already exists '%s' (%s) !" \
+                    %(history['name'], history['email']) )
 
 
 
@@ -511,9 +513,11 @@ def create_datasets(datasets, restore_purged, restore_deleted, verbose):
         print("\n ####### DATASETS #######")
     for dataset in datasets:
         #check if this dataset already exists
-        dataset_e = sa_session.query(Dataset).\
-        filter(Dataset.external_filename == Dataset['external_filename']).\
-        filter(Dataset.id == Dataset['id']).count()
+        dataset_e = 0
+        if dataset['external_filename'] is not "null":
+            dataset_e = sa_session.query(Dataset).\
+            filter(Dataset.external_filename == dataset['external_filename']).\
+            filter(Dataset.id == dataset['id']).count()
         if dataset_e == 0:
             if verbose:
                 print("A new dataset has been discovered; id: %s" %( dataset['id']) )
@@ -525,7 +529,7 @@ def create_datasets(datasets, restore_purged, restore_deleted, verbose):
             new_dataset.external_filename = dataset['external_filename']
             new_dataset.purgable = dataset['purgable']
             new_dataset.file_size = dataset['file_size']
-            new_dataset.extra_files_path = dataset['extra_files_path']
+            new_dataset._extra_files_path = dataset['extra_files_path']
             new_dataset.external_extra_files_path = dataset['external_extra_files_path']
             if restore_deleted is True and dataset['deleted'] is True:
                 sa_session.add(new_dataset)
