@@ -26,6 +26,9 @@ import datetime
 
 from json import loads
 
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.orm.exc import MultipleResultsFound
+
 def check_galaxy_root_dir():
     """
     Need this function before importing galaxy model and db_shell
@@ -106,6 +109,9 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
         elif type_of_backup.has_key('UserRoleAssociation'):
             URAs = type_of_backup['UserRoleAssociation']
             create_uras(URAs, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('api_keys'):
+            apikeys = type_of_backup['api_keys']
+            create_apikeys(apikeys, restore_purged, restore_deleted, verbose)
         elif type_of_backup.has_key('histories'):
             histories = type_of_backup['histories']
             create_histories(histories, restore_purged, restore_deleted, verbose)
@@ -313,6 +319,15 @@ def create_uras(URAs, restore_purged, restore_deleted, verbose):
             if verbose:
                 print( "This UserRoleAssociation already exists %s !" %( ura['name'] ) )
 
+
+
+def create_apikeys(apikeys, restore_purged, restore_deleted, verbose):
+    """
+    Create APIKeys()
+    """
+    if verbose:
+        print("\n ####### Sorry. APIKeys will not be create for security reason #######")
+        print("\n _______________ Please consider to regenerate these keys ____________")
 
 
 
