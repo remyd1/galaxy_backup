@@ -133,6 +133,28 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
         elif type_of_backup.has_key('libraryDatasetDatasetAssociations'):
             ldda = type_of_backup['libraryDatasetDatasetAssociations']
             create_libraryDatasetDatasetAssociations(ldda, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('libraryPermissions'):
+            lp = type_of_backup['libraryPermissions']
+            create_libraryPermissions(lp, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('libraryFolderPermissions'):
+            lfp = type_of_backup['libraryFolderPermissions']
+            create_libraryFolderPermissions(lfp, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('libraryDatasetPermissions'):
+            ldp = type_of_backup['libraryDatasetPermissions']
+            create_libraryDatasetPermissions(ldp, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('libraryDatasetDatasetAssociationPermissions'):
+            lddap = type_of_backup['libraryDatasetDatasetAssociationPermissions']
+            create_libraryDatasetDatasetAssociationPermissions(lddap, restore_purged, \
+            restore_deleted, verbose)
+        else:
+            pass
+
+
+
+
+"""
+Begin of creation part HERE
+"""
 
 
 
@@ -231,19 +253,19 @@ def create_gras(GRAs, restore_purged, restore_deleted, verbose):
         gra_e = sa_session.query(GroupRoleAssociation).filter(Role.name == \
         gra['role']).filter(Group.name == gra['group']).count()
         if gra_e == 0:
-            if verbose:
-                print("A new role has been discovered: %s" %( gra['name']) )
             try:
                 the_group = sa_session.query(Group).filter_by(name=gra['group']).one()
             except (MultipleResultsFound, NoResultFound) as e:
-                print("You have an error when trying to retrieving the group of " + \
-                " this GroupRoleAssociation (%s)" % ( e ) )
+                if verbose:
+                    print("You have an error when trying to retrieving the group of " + \
+                    " this GroupRoleAssociation (%s)" % ( e ) )
                 continue
             try:
                 the_role = sa_session.query(Role).filter_by(name=gra['role']).one()
             except (MultipleResultsFound, NoResultFound) as e:
-                print("You have an error when trying to retrieving the role of " + \
-                " this GroupRoleAssociation (%s)" % ( e ) )
+                if verbose:
+                    print("You have an error when trying to retrieving the role of " + \
+                    " this GroupRoleAssociation (%s)" % ( e ) )
                 continue
             new_gra = GroupRoleAssociation( the_group, the_role )
             sa_session.add( new_gra )
@@ -265,19 +287,19 @@ def create_ugas(UGAs, restore_purged, restore_deleted, verbose):
         uga_e = sa_session.query(UserGroupAssociation).filter(User.email == \
         uga['user_email']).filter(Group.name == uga['group']).count()
         if uga_e == 0:
-            if verbose:
-                print("A new role has been discovered: %s" %( uga['name']) )
             try:
                 the_group = sa_session.query(Group).filter_by(name=uga['group']).one()
             except (MultipleResultsFound, NoResultFound) as e:
-                print("You have an error when trying to retrieving the group of " + \
-                " this UserGroupAssociation (%s)" % ( e ) )
+                if verbose:
+                    print("You have an error when trying to retrieving the group of " + \
+                    " this UserGroupAssociation (%s)" % ( e ) )
                 continue
             try:
                 the_user = sa_session.query(User).filter_by(email=gra['user_email']).one()
             except (MultipleResultsFound, NoResultFound) as e:
-                print("You have an error when trying to retrieving the user (email)" + \
-                " of this UserGroupAssociation (%s)" % ( e ) )
+                if verbose:
+                    print("You have an error when trying to retrieving the user (email)" + \
+                    " of this UserGroupAssociation (%s)" % ( e ) )
                 continue
             new_uga = UserGroupAssociation( the_user, the_group )
             sa_session.add( new_uga )
@@ -299,19 +321,19 @@ def create_uras(URAs, restore_purged, restore_deleted, verbose):
         ura_e = sa_session.query(UserRoleAssociation).filter(Role.name == \
         ura['role']).filter(User.email == ura['user_email']).count()
         if ura_e == 0:
-            if verbose:
-                print("A new role has been discovered: %s" %( ura['name']) )
             try:
                 the_role = sa_session.query(Role).filter_by(name=ura['role']).one()
             except (MultipleResultsFound, NoResultFound) as e:
-                print("You have an error when trying to retrieving the group of " + \
-                " this UserRoleAssociation (%s)" % ( e ) )
+                if verbose:
+                    print("You have an error when trying to retrieving the group of " + \
+                    " this UserRoleAssociation (%s)" % ( e ) )
                 continue
             try:
                 the_user = sa_session.query(User).filter_by(email=ura['user_email']).one()
             except (MultipleResultsFound, NoResultFound) as e:
-                print("You have an error when trying to retrieving the user (email)" + \
-                " of this UserRoleAssociation (%s)" % ( e ) )
+                if verbose:
+                    print("You have an error when trying to retrieving the user (email)" + \
+                    " of this UserRoleAssociation (%s)" % ( e ) )
                 continue
             new_ura = UserRoleAssociation( the_user, the_role )
             sa_session.add( new_ura )
@@ -326,8 +348,8 @@ def create_apikeys(apikeys, restore_purged, restore_deleted, verbose):
     Create APIKeys()
     """
     if verbose:
-        print("\n ####### Sorry. APIKeys will not be create for security reason #######")
-        print("\n _______________ Please consider to regenerate these keys ____________")
+        print("\n ####### Sorry. APIKeys will not be created for security reason #######")
+        print("\n _______________ Please consider to regenerate these keys _____________")
 
 
 
@@ -551,7 +573,6 @@ def create_libraries(libraries, restore_purged, restore_deleted, verbose):
     if verbose:
         print("\n ####### LIBRARIES #######")
     for library in libraries:
-
         # check if this library already exists
         library_e = sa_session.query(Library).filter(Library.name == library['name']).\
         filter(Library.id == library['id']).count()
@@ -741,6 +762,151 @@ def create_libraryFolders(libraryFolders, restore_purged, restore_deleted, verbo
             elif lf['deleted'] is False:
                 sa_session.add(new_lf)
             sa_session.flush()
+
+
+
+def create_libraryPermissions(libraryPermissions, restore_purged, restore_deleted, verbose):
+    """
+    Create LibraryPermissions objects
+    """
+    if verbose:
+        print("\n ####### libraryPermissions #######")
+    for lp in libraryPermissions:
+        # check if this libraryPermission already exists
+        lp_e = sa_session.query(LibraryPermissions).filter(Library.name == lp['library__name']).\
+        filter(Library.id == lp['library__id']).\
+        filter(Role.name == lp['role__name']).count()
+        if lp_e == 0:
+            action = lp['action']
+            try:
+                the_library = sa_session.query(Library).filter(Library.name == lp['library__name']).\
+                filter(Library.name == lp['library__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the Library" + \
+                    " of this LibraryPermissions (%s)" % ( e ) )
+                continue
+            try:
+                the_role = sa_session.query(Role).filter_by(name=lp['role__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the role of " + \
+                    " this LibraryPermissions (%s)" % ( e ) )
+                continue
+            new_lp = LibraryPermissions( action, the_library, the_role )
+            sa_session.add(new_lp)
+            sa_session.flush()
+        else:
+            if verbose:
+                print("This LibraryPermission already exists")
+
+
+
+def create_libraryFolderPermissions(libraryFolderPermissions, restore_purged, restore_deleted, verbose):
+    """
+    Create LibraryFoldersPermissions objects
+    """
+    if verbose:
+        print("\n ####### libraryFolderPermissions #######")
+    for lfp in libraryFolderPermissions:
+        # check if this libraryFolderPermissions already exists
+        lfp_e = sa_session.query(LibraryFolderPermissions).filter(LibraryFolder.name == lfp['folder__name']).\
+        filter(Role.name == lfp['role__name']).count()
+        if lfp_e == 0:
+            action = lfp['action']
+            try:
+                the_lf = sa_session.query(LibraryFolder).filter_by(name=lfp['folder__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the LibraryFolder" + \
+                    " of this LibraryFolderPermissions (%s)" % ( e ) )
+                continue
+            try:
+                the_role = sa_session.query(Role).filter_by(name=lfp['role__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the role of " + \
+                    " this LibraryFolderPermissions (%s)" % ( e ) )
+                continue
+            new_lfp = LibraryFolderPermissions( action, the_lf, the_role )
+            sa_session.add(new_lfp)
+            sa_session.flush()
+        else:
+            if verbose:
+                print("This LibraryFolderPermission already exists")
+
+
+
+def create_libraryDatasetPermissions(libraryDatasetPermissions, restore_purged, restore_deleted, verbose):
+    """
+    Create LibraryDatasetPermissions objects
+    """
+    if verbose:
+        print("\n ####### libraryDatasetPermissions #######")
+    for ldp in libraryDatasetPermissions:
+        # check if this libraryDatasetPermissions already exists
+        ldp_e = sa_session.query(LibraryDatasetPermissions).filter(LibraryDataset.name == ldp['library_dataset__name']).\
+        filter(Role.name == ldp['role__name']).count()
+        if ldp_e == 0:
+            action = ldp['action']
+            try:
+                the_ld = sa_session.query(LibraryDataset).filter_by(name=ldp['library_dataset__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the LibraryDataset of " + \
+                    " this LibraryDatasetPermissions (%s)" % ( e ) )
+                continue
+            try:
+                the_role = sa_session.query(Role).filter_by(name=ldp['role__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the Role" + \
+                    " of this LibraryDatasetPermissions (%s)" % ( e ) )
+                continue
+            new_ldp = LibraryDatasetPermissions( action, the_ld, the_role )
+            sa_session.add(new_ldp)
+            sa_session.flush()
+        else:
+            if verbose:
+                print("This LibraryDatasetPermissions already exists")
+
+
+
+def create_libraryDatasetDatasetAssociationPermissions(libraryDatasetDatasetAssociationPermissions, \
+restore_purged, restore_deleted, verbose):
+    """
+    Create LibraryDatasetDatasetAssociationPermissions objects
+    """
+    if verbose:
+        print("\n ####### LibraryDatasetDatasetAssociationPermissions #######")
+    for lddap in libraryDatasetDatasetAssociationPermissions:
+        # check if this LibraryDatasetDatasetAssociationPermissions already exists
+        lddap_e = sa_session.query(LibraryDatasetDatasetAssociationPermissions).\
+        filter(LibraryDatasetDatasetAssociation.name == lddap['library_dataset_dataset_association__name']).\
+        filter(Role.name == lddap['role__name']).count()
+        if lddap_e == 0:
+            action = lddap['action']
+            try:
+                the_ldda = sa_session.query(LibraryDatasetDatasetAssociation).\
+                filter_by(name=lddap['library_dataset_dataset_association__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the LibraryDatasetDatasetAssociation"+\
+                    " of this LibraryDatasetDatasetAssociationPermissions (%s)" % ( e ) )
+                continue
+            try:
+                the_role = sa_session.query(Role).filter_by(name=lddap['role__name']).one()
+            except (MultipleResultsFound, NoResultFound) as e:
+                if verbose:
+                    print("You have an error when trying to retrieving the Role" + \
+                    " of this LibraryDatasetPermissions (%s)" % ( e ) )
+                continue
+            new_lddap = LibraryDatasetDatasetAssociationPermissions( action, the_ldda, the_role )
+            sa_session.add(new_lddap)
+            sa_session.flush()
+        else:
+            if verbose:
+                print("This LibraryDatasetDatasetAssociationPermissions already exists")
 
 
 

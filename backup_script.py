@@ -384,6 +384,92 @@ def retrieve_libraryFolders(nd,np):
     return libraryFoldersRoot, NUM_LF
 
 
+
+def retrieve_libraryPermissions(nd,np):
+    """
+    Retrieve LibraryPermissions objects
+    """
+    libraryPermissions = []
+    libraryPermissionsRoot = {'libraryPermissions':libraryPermissions}
+
+    ## libraryPermissions
+    all_libraryPermissions = sa_session.query(LibraryPermissions).all()
+    for lp in all_libraryPermissions:
+        library__name = lp.library.name
+        library__id = lp.library.id
+        role__name = lp.role.name
+        action = lp.action
+        lpdict = { 'library__name':library__name, 'library__id':library__id, 'role__name':role__name, \
+        'action':action }
+        libraryPermissions.append(lpdict)
+
+    return libraryPermissionsRoot
+
+
+
+def retrieve_libraryFolderPermissions(nd,np):
+    """
+    Retrieve LibraryFolderPermissions objects
+    """
+    libraryFolderPermissions = []
+    libraryFolderPermissionsRoot = {'libraryFolderPermissions':libraryFolderPermissions}
+
+    ## libraryFolderPermissions
+    all_libraryFolderPermissions = sa_session.query(LibraryFolderPermissions).all()
+    for lfp in all_libraryFolderPermissions:
+        folder__name = lfp.folder.name
+        role__name = lfp.role.name
+        action = lfp.action
+        lfpdict = { 'folder__name':folder__name, 'role__name':role__name, 'action':action }
+        libraryFolderPermissions.append(lfpdict)
+
+    return libraryFolderPermissionsRoot
+
+
+
+def retrieve_libraryDatasetPermissions(nd,np):
+    """
+    Retrieve LibraryDatasetPermissions objects
+    """
+    libraryDatasetPermissions = []
+    libraryDatasetPermissionsRoot = {'libraryDatasetPermissions':libraryDatasetPermissions}
+
+    ## libraryDatasetPermissions
+    all_libraryDatasetPermissions = sa_session.query(LibraryDatasetPermissions).all()
+    for ldp in all_libraryDatasetPermissions:
+        library_dataset__name = ldp.library_dataset.name
+        role__name = ldp.role.name
+        action = ldp.action
+        ldpdict = { 'library_dataset__name':library_dataset__name, 'role__name':role__name, \
+        'action':action }
+        libraryDatasetPermissions.append(ldpdict)
+
+    return libraryDatasetPermissionsRoot
+
+
+
+def retrieve_libraryDatasetDatasetAssociationPermissions(nd,np):
+    """
+    Retrieve LibraryDatasetDatasetAssociationPermissions objects
+    """
+    libraryDatasetDatasetAssociationPermissions = []
+    libraryDatasetDatasetAssociationPermissionsRoot = {'libraryDatasetDatasetAssociationPermissions':\
+    libraryDatasetDatasetAssociationPermissions}
+
+    ## libraryDatasetDatasetAssociationPermissions
+    all_libraryDatasetDatasetAssociationPermissions = sa_session.query(\
+    LibraryDatasetDatasetAssociationPermissions).all()
+    for lddap in all_libraryDatasetDatasetAssociationPermissions:
+        library_dataset_dataset_association__name = lddap.library_dataset_dataset_association.name
+        role__name = lddap.role.name
+        action = lddap.action
+        lddapdict = { 'library_dataset_dataset_association__name':library_dataset_dataset_association__name, \
+        'role__name':role__name, 'action':action }
+        libraryDatasetDatasetAssociationPermissions.append(lddapdict)
+
+    return libraryDatasetDatasetAssociationPermissionsRoot
+
+
 def retrieve_users(nd,np):
     """
     Retrieve users from previous galaxy
@@ -627,6 +713,11 @@ if __name__ == '__main__':
         libraryDatasetDatasetAssociations, num_ldda = \
         retrieve_libraryDatasetDatasetAssociations(nd,np)
         libraryFolders, num_lf = retrieve_libraryFolders(nd,np)
+        libraryPermissions = retrieve_libraryPermissions(nd,np)
+        libraryFolderPermissions = retrieve_libraryFolderPermissions(nd,np)
+        libraryDatasetPermissions = retrieve_libraryDatasetPermissions(nd,np)
+        libraryDatasetDatasetAssociationPermissions = \
+        retrieve_libraryDatasetDatasetAssociationPermissions(nd,np)
         if verbose:
             print("\n####################################\n")
             print( "%s LIBRARIES RETRIEVED" %(num_lib) )
@@ -637,6 +728,10 @@ if __name__ == '__main__':
         backup.append(libraries)
         backup.append(libraryDatasets)
         backup.append(libraryDatasetDatasetAssociations)
+        backup.append(libraryPermissions)
+        backup.append(libraryFolderPermissions)
+        backup.append(libraryDatasetPermissions)
+        backup.append(libraryDatasetDatasetAssociationPermissions)
 
 
     backup = dumps(backup, default=decimal_default, sort_keys=True, indent=4)
