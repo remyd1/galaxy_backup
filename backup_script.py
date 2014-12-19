@@ -179,19 +179,19 @@ def retrieve_associations():
     'GroupRoleAssociation':GRAs }
 
     for uga in all_UGAs:
-        user_email = uga.user.email
-        group = uga.group.name
-        UGAs.append( { 'user_email':user_email, 'group':group } )
+        user__email = uga.user.email
+        group__name = uga.group.name
+        UGAs.append( { 'user__email':user__email, 'group__name':group__name } )
 
     for ura in all_URAs:
-        user_email = ura.user.email
-        role = ura.role.name
-        URAs.append( { 'user_email':user_email, 'role':role } )
+        user__email = ura.user.email
+        role__name = ura.role.name
+        URAs.append( { 'user__email':user__email, 'role__name':role__name } )
 
     for gra in all_GRAs:
-        group = gra.group.name
-        role = gra.role.name
-        GRAs.append( { 'group':group, 'role':role } )
+        group__name = gra.group.name
+        role__name = gra.role.name
+        GRAs.append( { 'group__name':group__name, 'role__name':role__name } )
 
     return assoRoot
 
@@ -248,6 +248,25 @@ def retrieve_datasets(nd,np):
 
 
 
+def retrieve_datasetPermissions(nd,np):
+    """
+    Retrieve DatasetPermissions
+    """
+    datasetPermissions = []
+    datasetPermissionsRoot = {'datasetPermissions':datasetPermissions}
+    all_datasetPermissions = sa_session.query(DatasetPermissions).all()
+    for dp in all_datasetPermissions:
+        action = dp.action
+        dataset__external_filename = dp.dataset.external_filename
+        role__name = dp.role.name
+        datasetPermissions.append( { 'action':action, \
+        'dataset__external_filename':dataset__external_filename, \
+        'role__name':role__name } )
+
+    return datasetPermissionsRoot
+
+
+
 def retrieve_histories(nd,np):
     """
     Retrieve histories
@@ -270,9 +289,9 @@ def retrieve_histories(nd,np):
         # Relationships
         user = hid.user
         if user is not None:
-            email = user.email
+            user__email = user.email
         else:
-            email = ""
+            user__email = ""
         datasets = hid.datasets
         datasetnames = []
         if len(datasets) > 0:
@@ -285,7 +304,7 @@ def retrieve_histories(nd,np):
         elif deleted == True and nd == True:
             continue
         else:
-            histories.append( { 'id':id, 'name':name, 'email':email, \
+            histories.append( { 'id':id, 'name':name, 'user__email':user__email, \
             'datasetnames':datasetnames, 'tags':tags, 'deleted':deleted, \
             'purged':purged, 'importing':importing, 'genome_build':genome_build, \
             'published':published })
@@ -311,12 +330,12 @@ def retrieve_libraries(nd,np):
         if hasattr(lib, 'synopsis'):
             libdict['synopsis'] = lib.synopsis
         if hasattr(lib, 'root_folder'):
-            libdict['root_folder_id'] = lib.root_folder.id
-            libdict['root_folder_name'] = lib.root_folder.name
-            libdict['root_folder_description'] = lib.root_folder.description
-            libdict['root_folder_item_count'] = lib.root_folder.item_count
-            libdict['root_folder_order_id'] = lib.root_folder.order_id
-            libdict['root_folder_genome_build'] = lib.root_folder.genome_build
+            libdict['root_folder__id'] = lib.root_folder.id
+            libdict['root_folder__name'] = lib.root_folder.name
+            libdict['root_folder__description'] = lib.root_folder.description
+            libdict['root_folder__item_count'] = lib.root_folder.item_count
+            libdict['root_folder__order_id'] = lib.root_folder.order_id
+            libdict['root_folder__genome_build'] = lib.root_folder.genome_build
         libraries.append(libdict)
 
     return librariesRoot, NUM_LIB
@@ -533,7 +552,7 @@ def retrieve_workflows(nd,np):
             swfdict['slug'] = swf.slug
         if hasattr(swf, 'user'):
             if swf.user is not None:
-                swfdict['user_email'] = swf.user.email
+                swfdict['user__email'] = swf.user.email
         #~ if hasattr(swf, 'workflows'):
             #~ print(repr(swf.workflows))
         workflows.append(swfdict)
@@ -544,7 +563,7 @@ def retrieve_workflows(nd,np):
         wfdict = wf.to_dict()
         if hasattr(wf, 'user'):
             if wf.user is not None:
-                wfdict['user_email'] = wf.user.email
+                wfdict['user__email'] = wf.user.email
         if hasattr(wf, 'uuid'):
             wfdict['uuid'] = wf.uuid
         wfdict['wst_id'] = []
@@ -694,11 +713,13 @@ if __name__ == '__main__':
 
     if backup2extract == "datasets" or backup2extract == "all":
         datasets, num_dat, clean_num_dat = retrieve_datasets(nd,np)
+        datasetPermissions = retrieve_datasetPermissions(nd,np)
         if verbose:
             print("\n####################################\n")
             print( "%s DATASETS RETRIEVED" %(num_dat) )
             print( "%s CLEAN DATASETS PROCESSED" %(clean_num_dat) )
         backup.append(datasets)
+        backup.append(datasetPermissions)
 
     if backup2extract == "workflows" or backup2extract == "all":
         workflows, num_wf = retrieve_workflows(nd,np)
