@@ -117,6 +117,12 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
             histories = type_of_backup['histories']
             create_histories(histories, restore_purged, restore_deleted, \
             verbose)
+        elif type_of_backup.has_key('historyDatasetCollectionAssociation'):
+            HDCAs = type_of_backup['historyDatasetCollectionAssociation']
+            create_hdcas(HDCAs, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('historyDatasetAssociation'):
+            HDAs = type_of_backup['historyDatasetAssociation']
+            create_hdas(HDAs, restore_purged, restore_deleted, verbose)
         elif type_of_backup.has_key('workflows'):
             workflows = type_of_backup['workflows']
             create_workflows(workflows, restore_purged, restore_deleted, \
@@ -439,6 +445,41 @@ def create_histories(histories, restore_purged, restore_deleted, verbose):
                     print("This History seems to already exists '%s' (%s) !" \
                     %(history['name'], history['user__email']))
 
+
+
+def create_hdas(HDAs, restore_purged, restore_deleted, verbose):
+    """
+    Create history dataset associations HistoryDatasetAssociation
+    from backup
+    """
+    if verbose:
+        print("\n ####### HistoryDatasetAssociation #######")
+    for the_hda in HDAs:
+        # check if the corresponding hda already exists
+        the_hda_e = sa_session.query(HistoryDatasetAssociation).\
+        filter(id == the_hda['id']).filter(hid == the_hda['hid']).\
+        filter(name == the_hda['name'])
+        # check if the corresponding history already exists
+        the_history = sa_session.query(History).get(the_hda['history_id'])
+        if not the_hda_e:
+
+
+
+def create_hdcas(HDCAs, restore_purged, restore_deleted, verbose):
+    """
+    Create history dataset collection associations
+    HistoryDatasetCollectionAssociation
+    from backup
+    """
+    if verbose:
+        print("\n ####### HistoryDatasetCollectionAssociation #######")
+    for the_hdca in HDCAs:
+        # check if the corresponding hdca already exists
+        the_hdca_e = sa_session.query(HistoryDatasetCollectionAssociation).\
+        filter(id == the_hdca['id']).filter(hid == the_hdca['hid']).\
+        filter(name == the_hdca['name'])
+        # check if the corresponding history already exists
+        the_history = sa_session.query(History).get(the_hdca['history_id'])
 
 
 def create_workflows(workflows, restore_purged, restore_deleted, verbose):
@@ -767,7 +808,6 @@ restore_deleted, verbose):
     if verbose:
         print("\n ####### libraryDatasetDatasetAssociations #######")
     for the_ldda in ldda:
-
         # check if this library already exists
         the_ldda_e = sa_session.query(LibraryDatasetDatasetAssociation).\
         filter(LibraryDatasetDatasetAssociation.name == the_ldda['name']).\

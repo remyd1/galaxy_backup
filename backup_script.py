@@ -317,6 +317,95 @@ def retrieve_histories(nd, np):
 
 
 
+def retrieve_historyDatasetAssociation(nd, np):
+    """
+    Retrieve historyDatasetAssociation
+    """
+    historyDatasetAssociation = []
+    historyDatasetAssociationRoot = {'historyDatasetAssociation':\
+    historyDatasetAssociation}
+
+    NUM_HDA = sa_session.query(HistoryDatasetAssociation).count()
+
+    ## HistoryDatasetAssociation
+    all_historyDatasetAssociation = sa_session.query(HistoryDatasetAssociation).\
+    filter_by(purged='False').order_by(HistoryDatasetAssociation.id)
+    for hda in all_historyDatasetAssociation:
+        if hda.blurb != "empty" and hda.blurb != "error" and \
+        hda.blurb != "tool error" and hda.blurb != "queued" and \
+        hda.blurb != "deleted" and hda.blurb != '0 bytes' and \
+        hda.blurb is not None:
+            try:
+                hdadict = hda.to_dict()
+            except Exception, e:
+                # for debug. Could happen for files which are in database
+                # (without the size), are not purged, but are no more
+                # present on the disk.
+                # However with previous filter on blurb and purged this
+                # should not happen
+                print "Can not convert this HDA object (id %d) into"  %(hda.id)+\
+                " dictionnary because of the following error: %s " %(e)
+            historyDatasetAssociation.append(hdadict)
+
+    return historyDatasetAssociationRoot, NUM_HDA
+
+
+
+#~ def retrieve_historyAnnotationAssociation(nd, np):
+    #~ """
+    #~ Retrieve historyAnnotationAssociation
+    #~ """
+    #~ historyAnnotationAssociation = []
+    #~ historyAnnotationAssociationRoot = {'historyAnnotationAssociation':\
+    #~ historyAnnotationAssociation}
+#~
+    #~ ## HistoryAnnotationAssociation
+    #~ all_historyAnnotationAssociation = sa_session.query(HistoryAnnotationAssociation).\
+    #~ all()
+#~
+    #~ return historyAnnotationAssociationRoot
+#~
+#~
+#~
+#~ def retrieve_historyDatasetAssociationAnnotationAssociation(nd, np):
+    #~ """
+    #~ Retrieve historyDatasetAssociationAnnotationAssociation
+    #~ """
+    #~ historyDatasetAssociationAnnotationAssociation = []
+    #~ historyDatasetAssociationAnnotationAssociationRoot = \
+    #~ {'historyDatasetAssociationAnnotationAssociation':\
+    #~ historyDatasetAssociationAnnotationAssociation}
+#~
+    #~ ## HistoryDatasetAssociationAnnotationAssociation
+    #~ all_historyDatasetAssociationAnnotationAssociation = sa_session.\
+    #~ query(HistoryDatasetAssociationAnnotationAssociation).all()
+#~
+    #~ return historyDatasetAssociationAnnotationAssociationRoot
+
+
+
+def retrieve_historyDatasetCollectionAssociation(nd, np):
+    """
+    Retrieve historyDatasetCollectionAssociation
+    """
+    historyDatasetCollectionAssociation = []
+    historyDatasetCollectionAssociationRoot = {\
+    'historyDatasetCollectionAssociation':historyDatasetCollectionAssociation}
+
+    NUM_HDCA = sa_session.query(HistoryDatasetCollectionAssociation).count()
+
+    ## HistoryDatasetCollectionAssociation
+    all_historyDatasetCollectionAssociation = sa_session.\
+    query(HistoryDatasetCollectionAssociation).all()
+
+    for hdca in all_historyDatasetCollectionAssociation:
+        hdcadict = hdca.to_dict()
+        historyDatasetCollectionAssociation.append(hdcadict)
+        #~ print hdcadict
+
+    return historyDatasetCollectionAssociationRoot, NUM_HDCA
+
+
 def retrieve_libraries(nd, np):
     """
     Retrieve libraries
@@ -727,11 +816,26 @@ if __name__ == '__main__':
 
     if backup2extract == "histories" or backup2extract == "all":
         histories, num_hist, clean_num_hist = retrieve_histories(nd, np)
+        historyDatasetAssociation, num_hda = \
+        retrieve_historyDatasetAssociation(nd, np)
+        #historyAnnotationAssociation = \
+        #retrieve_historyAnnotationAssociation(nd, np)
+        #historyDatasetAssociationAnnotationAssociation = \
+        #retrieve_historyDatasetAssociationAnnotationAssociation(nd, np)
+        historyDatasetCollectionAssociation, num_hdca = \
+        retrieve_historyDatasetCollectionAssociation(nd, np)
         if verbose:
             print("\n####################################\n")
             print("%s HISTORIES RETRIEVED" %(num_hist))
             print("%s CLEAN HISTORIES PROCESSED" %(clean_num_hist))
+            print("%s HISTORIES DATASETS ASSOCIATIONS RETRIEVED" %(num_hda))
+            print("%s HISTORIES DATASETS COLLECTIONS ASSOCIATIONS RETRIEVED" \
+            %(num_hdca))
         backup.append(histories)
+        backup.append(historyDatasetAssociation)
+        #backup.append(historyAnnotationAssociation)
+        #backup.append(historyDatasetAssociationAnnotationAssociation)
+        backup.append(historyDatasetCollectionAssociation)
 
     if backup2extract == "datasets" or backup2extract == "all":
         datasets, num_dat, clean_num_dat = retrieve_datasets(nd, np)
