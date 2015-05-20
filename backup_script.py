@@ -88,7 +88,7 @@ from scripts.db_shell import *
 
 
 
-def retrieve_apikeys(nd, np):
+def retrieve_apikeys():
     """
     Retrieve API Keys()
     """
@@ -233,9 +233,9 @@ def retrieve_datasets(nd, np):
         if hasattr(dat, '_extra_files_path'):
             _extra_files_path = dat._extra_files_path
         file_size = dat.file_size
-        if purged == True and np == True:
+        if purged is True and np is True:
             continue
-        elif deleted == True and nd == True:
+        elif deleted is True and nd is True:
             continue
         else:
             datasets.append({'id':id, 'state':state, 'deleted': deleted, \
@@ -249,7 +249,7 @@ def retrieve_datasets(nd, np):
 
 
 
-def retrieve_datasetPermissions(nd, np):
+def retrieve_datasetPermissions():
     """
     Retrieve DatasetPermissions
     """
@@ -268,7 +268,7 @@ def retrieve_datasetPermissions(nd, np):
 
 
 
-def retrieve_datasetCollections(nd, np):
+def retrieve_datasetCollections():
     """
     Retrieve DatasetCollections objects
     """
@@ -283,10 +283,10 @@ def retrieve_datasetCollections(nd, np):
                 dc_elements.append({\
                 'element_identifier':element.element_identifier, \
                 'element_index':element.element_index, \
-                'element_type':element.element_type()})
+                'element_type':element.element_type})
         datasetCollections.append({'id':dc.id, \
         'collection_type':dc.collection_type, \
-        'populated_states': dc.populated_states, \
+        #~ 'populated_state': dc.populated_state, \
         'elements':dc_elements})
         NUM_DATACOLL = NUM_DATACOLL + 1
     return datasetCollectionsRoot, NUM_DATACOLL
@@ -327,9 +327,9 @@ def retrieve_histories(nd, np):
         # galaxy.model.GalaxySessionToHistoryAssociation object
         # (session_key, is_valid, remote_addr...)
         #~ galaxy_sessions = str(hid.galaxy_sessions)
-        if purged == True and np == True:
+        if purged is True and np is True:
             continue
-        elif deleted == True and nd == True:
+        elif deleted is True and nd is True:
             continue
         else:
             histories.append({'id':id, 'name':name, 'user__email':user__email, \
@@ -342,7 +342,7 @@ def retrieve_histories(nd, np):
 
 
 
-def retrieve_historyDatasetAssociation(nd, np):
+def retrieve_historyDatasetAssociation(nd):
     """
     Retrieve historyDatasetAssociation
     """
@@ -353,30 +353,35 @@ def retrieve_historyDatasetAssociation(nd, np):
     NUM_HDA = sa_session.query(HistoryDatasetAssociation).count()
 
     ## HistoryDatasetAssociation
-    all_historyDatasetAssociation = sa_session.query(HistoryDatasetAssociation).\
-    filter_by(purged='False').order_by(HistoryDatasetAssociation.id)
+    all_historyDatasetAssociation = sa_session.\
+    query(HistoryDatasetAssociation).filter_by(purged='False').\
+    order_by(HistoryDatasetAssociation.id)
     for hda in all_historyDatasetAssociation:
         if hda.blurb != "empty" and hda.blurb != "error" and \
         hda.blurb != "tool error" and hda.blurb != "queued" and \
         hda.blurb != "deleted" and hda.blurb != '0 bytes' and \
         hda.blurb is not None:
-            try:
-                hdadict = hda.to_dict()
-            except Exception, e:
-                # for debug. Could happen for files which are in database
-                # (without the size), are not purged, but are no more
-                # present on the disk.
-                # However with previous filter on blurb and purged this
-                # should not happen
-                print "Can not convert this HDA object (id %d) into"  %(hda.id)+\
-                " dictionnary because of the following error: %s " %(e)
-            historyDatasetAssociation.append(hdadict)
+            if hda.deleted is True and nd is True:
+                continue
+            else:
+                try:
+                    hdadict = hda.to_dict()
+                    historyDatasetAssociation.append(hdadict)
+                except Exception, e:
+                    # for debug. Could happen for files which are in database
+                    # (without the size), are not purged, but are no more
+                    # present on the disk.
+                    # However with previous filter on blurb and purged this
+                    # should not happen
+                    print "Can not convert this HDA object (id %d) into" \
+                    %(hda.id) + " dictionnary because of the following"+ \
+                    " error: %s " %(e)
 
     return historyDatasetAssociationRoot, NUM_HDA
 
 
 
-def retrieve_historyDatasetCollectionAssociation(nd, np):
+def retrieve_historyDatasetCollectionAssociation(nd, verbose):
     """
     Retrieve historyDatasetCollectionAssociation
     """
@@ -391,15 +396,22 @@ def retrieve_historyDatasetCollectionAssociation(nd, np):
     query(HistoryDatasetCollectionAssociation).all()
 
     for hdca in all_historyDatasetCollectionAssociation:
-        hdcadict = hdca.to_dict()
-        historyDatasetCollectionAssociation.append(hdcadict)
-        #~ print hdcadict
+        if hdca.deleted is True and nd is True:
+            continue
+        else:
+            try:
+                hdcadict = hdca.to_dict()
+                historyDatasetCollectionAssociation.append(hdcadict)
+                #~ print hdcadict
+            except Exception, e:
+                if verbose:
+                    print("exception: %s" %(e))
 
     return historyDatasetCollectionAssociationRoot, NUM_HDCA
 
 
 
-def retrieve_libraries(nd, np):
+def retrieve_libraries(nd, np, verbose):
     """
     Retrieve libraries
     """
@@ -409,27 +421,30 @@ def retrieve_libraries(nd, np):
 
     all_libraries = sa_session.query(Library).order_by(Library.name)
     for lib in all_libraries:
-        libdict = lib.to_dict()
-        if hasattr(lib, 'description'):
-            libdict['description'] = lib.description
-        if hasattr(lib, 'synopsis'):
-            libdict['synopsis'] = lib.synopsis
-        if hasattr(lib, 'root_folder'):
-            libdict['root_folder__id'] = lib.root_folder.id
-            libdict['root_folder__name'] = lib.root_folder.name
-            libdict['root_folder__description'] = lib.root_folder.description
-            libdict['root_folder__item_count'] = lib.root_folder.item_count
-            libdict['root_folder__order_id'] = lib.root_folder.order_id
-            libdict['root_folder__genome_build'] = lib.root_folder.genome_build
-        libraries.append(libdict)
-
+        try:
+            libdict = lib.to_dict()
+            if hasattr(lib, 'description'):
+                libdict['description'] = lib.description
+            if hasattr(lib, 'synopsis'):
+                libdict['synopsis'] = lib.synopsis
+            if hasattr(lib, 'root_folder'):
+                libdict['root_folder__id'] = lib.root_folder.id
+                libdict['root_folder__name'] = lib.root_folder.name
+                libdict['root_folder__description'] = lib.root_folder.description
+                libdict['root_folder__item_count'] = lib.root_folder.item_count
+                libdict['root_folder__order_id'] = lib.root_folder.order_id
+                libdict['root_folder__genome_build'] = lib.root_folder.genome_build
+            libraries.append(libdict)
+        except Exception, e:
+            if verbose:
+                print("exception: %s" %(e))
     return librariesRoot, NUM_LIB
 
 
 
-def retrieve_libraryDatasetDatasetAssociations(nd, np):
+def retrieve_libraryDatasetDatasetAssociations(nd, verbose):
     """
-    Retrieve LibraryDataset objects
+    Retrieve LibraryDatasetDatasetAssociations objects
     """
     libraryDatasetDatasetAssociations = []
     libraryDatasetDatasetAssociationRoot = {\
@@ -440,15 +455,22 @@ def retrieve_libraryDatasetDatasetAssociations(nd, np):
     ## LibraryDatasetDatasetAssociation
     all_LibraryDatasetDatasetAssociation = sa_session.\
     query(LibraryDatasetDatasetAssociation).filter_by(deleted='False')
-    for ld in all_LibraryDatasetDatasetAssociation:
-        lddict = ld.to_dict()
-        libraryDatasetDatasetAssociations.append(lddict)
+    for ldda in all_LibraryDatasetDatasetAssociation:
+        if ldda.deleted is True and nd is True:
+            continue
+        else:
+            try:
+                lddadict = ldda.to_dict()
+                libraryDatasetDatasetAssociations.append(lddadict)
+            except Exception, e:
+                if verbose:
+                    print("exception: %s" %(e))
 
     return libraryDatasetDatasetAssociationRoot, NUM_LDDA
 
 
 
-def retrieve_libraryDatasets(nd, np):
+def retrieve_libraryDatasets(verbose):
     """
     Retrieve LibraryDataset objects
     """
@@ -461,16 +483,20 @@ def retrieve_libraryDatasets(nd, np):
     all_LibraryDatasets = sa_session.query(LibraryDataset).\
     filter_by(deleted='False')
     for ld in all_LibraryDatasets:
-        lddict = ld.to_dict()
-        if hasattr(ld, 'order_id'):
-            lddict['order_id'] = ld.order_id
-        libraryDatasets.append(lddict)
+        try:
+            lddict = ld.to_dict()
+            if hasattr(ld, 'order_id'):
+                lddict['order_id'] = ld.order_id
+            libraryDatasets.append(lddict)
+        except Exception, e:
+            if verbose:
+                print("exception: %s" %(e))
 
     return libraryDatasetsRoot, NUM_LD
 
 
 
-def retrieve_libraryFolders(nd, np):
+def retrieve_libraryFolders():
     """
     Retrieve LibraryFolders objects
     """
@@ -493,7 +519,7 @@ def retrieve_libraryFolders(nd, np):
 
 
 
-def retrieve_libraryPermissions(nd, np):
+def retrieve_libraryPermissions():
     """
     Retrieve LibraryPermissions objects
     """
@@ -515,7 +541,7 @@ def retrieve_libraryPermissions(nd, np):
 
 
 
-def retrieve_libraryFolderPermissions(nd, np):
+def retrieve_libraryFolderPermissions():
     """
     Retrieve LibraryFolderPermissions objects
     """
@@ -538,7 +564,7 @@ def retrieve_libraryFolderPermissions(nd, np):
 
 
 
-def retrieve_libraryDatasetPermissions(nd, np):
+def retrieve_libraryDatasetPermissions():
     """
     Retrieve LibraryDatasetPermissions objects
     """
@@ -561,7 +587,7 @@ def retrieve_libraryDatasetPermissions(nd, np):
 
 
 
-def retrieve_libraryDatasetDatasetAssociationPermissions(nd, np):
+def retrieve_libraryDatasetDatasetAssociationPermissions():
     """
     Retrieve LibraryDatasetDatasetAssociationPermissions objects
     """
@@ -631,7 +657,7 @@ def retrieve_users(nd, np):
 
 
 
-def retrieve_workflows(nd, np):
+def retrieve_workflows(nd, np, verbose):
     """
     Retrieve workflows with all steps
     """
@@ -644,32 +670,40 @@ def retrieve_workflows(nd, np):
     all_stored_workflows = sa_session.query(StoredWorkflow).\
     order_by(StoredWorkflow.id)
     for swf in all_stored_workflows:
-        swfdict = swf.to_dict()
-        if hasattr(swf, 'latest_workflow_id'):
-            swfdict['latest_workflow_id'] = swf.latest_workflow_id
-        if hasattr(swf, 'slug'):
-            swfdict['slug'] = swf.slug
-        if hasattr(swf, 'user'):
-            if swf.user is not None:
-                swfdict['user__email'] = swf.user.email
-        #~ if hasattr(swf, 'workflows'):
-            #~ print(repr(swf.workflows))
-        workflows.append(swfdict)
+        try:
+            swfdict = swf.to_dict()
+            if hasattr(swf, 'latest_workflow_id'):
+                swfdict['latest_workflow_id'] = swf.latest_workflow_id
+            if hasattr(swf, 'slug'):
+                swfdict['slug'] = swf.slug
+            if hasattr(swf, 'user'):
+                if swf.user is not None:
+                    swfdict['user__email'] = swf.user.email
+            #~ if hasattr(swf, 'workflows'):
+                #~ print(repr(swf.workflows))
+            workflows.append(swfdict)
+        except Exception, e:
+            if verbose:
+                print("exception: %s" %(e))
 
     ## workflow objects
     all_workflows = sa_session.query(Workflow).order_by(Workflow.name)
     for wf in all_workflows:
-        wfdict = wf.to_dict()
-        if hasattr(wf, 'user'):
-            if wf.user is not None:
-                wfdict['user__email'] = wf.user.email
-        if hasattr(wf, 'uuid'):
-            wfdict['uuid'] = wf.uuid
-        wfdict['wst_id'] = []
-        if hasattr(wf, 'steps'):
-            for wst in wf.steps:
-                wfdict['wst_id'].append(wst.id)
-        workflows.append(wfdict)
+        try:
+            wfdict = wf.to_dict()
+            if hasattr(wf, 'user'):
+                if wf.user is not None:
+                    wfdict['user__email'] = wf.user.email
+            if hasattr(wf, 'uuid'):
+                wfdict['uuid'] = wf.uuid
+            wfdict['wst_id'] = []
+            if hasattr(wf, 'steps'):
+                for wst in wf.steps:
+                    wfdict['wst_id'].append(wst.id)
+            workflows.append(wfdict)
+        except Exception, e:
+            if verbose:
+                print("exception: %s" %(e))
 
     ## steps
     all_workflows_steps = sa_session.query(WorkflowStep).\
@@ -762,7 +796,8 @@ if __name__ == '__main__':
     parser.add_argument('-nd', '--nodeleted', action='store_true', \
     help="Do not backup deleted elements")
     parser.add_argument('-v', '--verbose', action='store_true', \
-    help="Display many informations except json datas if you choose output file [-o]")
+    help="Display many informations except json datas if you choose "+\
+    "output file [-o]")
     parser.add_argument('-b', '--backup', choices=['users', 'workflows', \
     'libraries', 'histories', 'datasets', 'all'], help="The data to backup", \
     required=True)
@@ -790,7 +825,7 @@ if __name__ == '__main__':
 
     if backup2extract == "users" or backup2extract == "all":
         users, num_users, clean_num_users = retrieve_users(nd, np)
-        api_keys, num_keys = retrieve_apikeys(nd, np)
+        api_keys, num_keys = retrieve_apikeys()
         roles, num_roles = retrieve_roles(nd, np)
         groups, num_groups = retrieve_groups(nd, np)
         associations = retrieve_associations()
@@ -810,9 +845,9 @@ if __name__ == '__main__':
     if backup2extract == "histories" or backup2extract == "all":
         histories, num_hist, clean_num_hist = retrieve_histories(nd, np)
         historyDatasetAssociation, num_hda = \
-        retrieve_historyDatasetAssociation(nd, np)
+        retrieve_historyDatasetAssociation(nd)
         historyDatasetCollectionAssociation, num_hdca = \
-        retrieve_historyDatasetCollectionAssociation(nd, np)
+        retrieve_historyDatasetCollectionAssociation(nd, verbose)
         if verbose:
             print("\n####################################\n")
             print("%s HISTORIES RETRIEVED" %(num_hist))
@@ -826,8 +861,8 @@ if __name__ == '__main__':
 
     if backup2extract == "datasets" or backup2extract == "all":
         datasets, num_dat, clean_num_dat = retrieve_datasets(nd, np)
-        datasetPermissions = retrieve_datasetPermissions(nd, np)
-        datasetCollections, num_coll = retrieve_datasetCollections(nd, np)
+        datasetPermissions = retrieve_datasetPermissions()
+        datasetCollections, num_coll = retrieve_datasetCollections()
         if verbose:
             print("\n####################################\n")
             print("%s DATASETS RETRIEVED" %(num_dat))
@@ -838,23 +873,23 @@ if __name__ == '__main__':
         backup.append(datasetCollections)
 
     if backup2extract == "workflows" or backup2extract == "all":
-        workflows, num_wf = retrieve_workflows(nd, np)
+        workflows, num_wf = retrieve_workflows(nd, np, verbose)
         if verbose:
             print("\n####################################\n")
             print("%s WORKFLOWS RETRIEVED" %(num_wf))
         backup.append(workflows)
 
     if backup2extract == "libraries" or backup2extract == "all":
-        libraries, num_lib = retrieve_libraries(nd, np)
-        libraryDatasets, num_ld = retrieve_libraryDatasets(nd, np)
+        libraries, num_lib = retrieve_libraries(nd, np, verbose)
+        libraryDatasets, num_ld = retrieve_libraryDatasets(verbose)
         libraryDatasetDatasetAssociations, num_ldda = \
-        retrieve_libraryDatasetDatasetAssociations(nd, np)
-        libraryFolders, num_lf = retrieve_libraryFolders(nd, np)
-        libraryPermissions = retrieve_libraryPermissions(nd, np)
-        libraryFolderPermissions = retrieve_libraryFolderPermissions(nd, np)
-        libraryDatasetPermissions = retrieve_libraryDatasetPermissions(nd, np)
+        retrieve_libraryDatasetDatasetAssociations(nd, verbose)
+        libraryFolders, num_lf = retrieve_libraryFolders()
+        libraryPermissions = retrieve_libraryPermissions()
+        libraryFolderPermissions = retrieve_libraryFolderPermissions()
+        libraryDatasetPermissions = retrieve_libraryDatasetPermissions()
         libraryDatasetDatasetAssociationPermissions = \
-        retrieve_libraryDatasetDatasetAssociationPermissions(nd, np)
+        retrieve_libraryDatasetDatasetAssociationPermissions()
         if verbose:
             print("\n####################################\n")
             print("%s LIBRARIES RETRIEVED" %(num_lib))

@@ -777,11 +777,11 @@ restore_deleted, verbose):
         (dc_e, ), = sa_session.query(exists().\
         where(DatasetCollection.id == dc['id']).\
         where(DatasetCollection.collection_type == dc['collection_type']).\
-        where(DatasetCollection.populated_states == dc['populated_states']))
+        where(DatasetCollection.populated_state == dc['populated_state']))
         if dc_e is False:
             new_dc = DatasetCollection()
             new_dc.collection_type = dc['collection_type']
-            new_dc.populated_states = dc['populated_states']
+            new_dc.populated_state = dc['populated_state']
             new_dc.id = dc['id']
             if dc.has_key('elements'):
                 for dc_element in dc['elements']:
