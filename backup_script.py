@@ -268,6 +268,31 @@ def retrieve_datasetPermissions(nd, np):
 
 
 
+def retrieve_datasetCollections(nd, np):
+    """
+    Retrieve DatasetCollections objects
+    """
+    datasetCollections = []
+    datasetCollectionsRoot = {'datasetCollections':datasetCollections}
+    all_datasetCollections = sa_session.query(DatasetCollection).all()
+    NUM_DATACOLL = 0
+    for dc in all_datasetCollections:
+        dc_elements = []
+        if hasattr(dc, 'elements'):
+            for element in dc.elements:
+                dc_elements.append({\
+                'element_identifier':element.element_identifier, \
+                'element_index':element.element_index, \
+                'element_type':element.element_type()})
+        datasetCollections.append({'id':dc.id, \
+        'collection_type':dc.collection_type, \
+        'populated_states': dc.populated_states, \
+        'elements':dc_elements})
+        NUM_DATACOLL = NUM_DATACOLL + 1
+    return datasetCollectionsRoot, NUM_DATACOLL
+
+
+
 def retrieve_histories(nd, np):
     """
     Retrieve histories
@@ -351,39 +376,6 @@ def retrieve_historyDatasetAssociation(nd, np):
 
 
 
-#~ def retrieve_historyAnnotationAssociation(nd, np):
-    #~ """
-    #~ Retrieve historyAnnotationAssociation
-    #~ """
-    #~ historyAnnotationAssociation = []
-    #~ historyAnnotationAssociationRoot = {'historyAnnotationAssociation':\
-    #~ historyAnnotationAssociation}
-#~
-    #~ ## HistoryAnnotationAssociation
-    #~ all_historyAnnotationAssociation = sa_session.query(HistoryAnnotationAssociation).\
-    #~ all()
-#~
-    #~ return historyAnnotationAssociationRoot
-#~
-#~
-#~
-#~ def retrieve_historyDatasetAssociationAnnotationAssociation(nd, np):
-    #~ """
-    #~ Retrieve historyDatasetAssociationAnnotationAssociation
-    #~ """
-    #~ historyDatasetAssociationAnnotationAssociation = []
-    #~ historyDatasetAssociationAnnotationAssociationRoot = \
-    #~ {'historyDatasetAssociationAnnotationAssociation':\
-    #~ historyDatasetAssociationAnnotationAssociation}
-#~
-    #~ ## HistoryDatasetAssociationAnnotationAssociation
-    #~ all_historyDatasetAssociationAnnotationAssociation = sa_session.\
-    #~ query(HistoryDatasetAssociationAnnotationAssociation).all()
-#~
-    #~ return historyDatasetAssociationAnnotationAssociationRoot
-
-
-
 def retrieve_historyDatasetCollectionAssociation(nd, np):
     """
     Retrieve historyDatasetCollectionAssociation
@@ -404,6 +396,7 @@ def retrieve_historyDatasetCollectionAssociation(nd, np):
         #~ print hdcadict
 
     return historyDatasetCollectionAssociationRoot, NUM_HDCA
+
 
 
 def retrieve_libraries(nd, np):
@@ -818,10 +811,6 @@ if __name__ == '__main__':
         histories, num_hist, clean_num_hist = retrieve_histories(nd, np)
         historyDatasetAssociation, num_hda = \
         retrieve_historyDatasetAssociation(nd, np)
-        #historyAnnotationAssociation = \
-        #retrieve_historyAnnotationAssociation(nd, np)
-        #historyDatasetAssociationAnnotationAssociation = \
-        #retrieve_historyDatasetAssociationAnnotationAssociation(nd, np)
         historyDatasetCollectionAssociation, num_hdca = \
         retrieve_historyDatasetCollectionAssociation(nd, np)
         if verbose:
@@ -833,19 +822,20 @@ if __name__ == '__main__':
             %(num_hdca))
         backup.append(histories)
         backup.append(historyDatasetAssociation)
-        #backup.append(historyAnnotationAssociation)
-        #backup.append(historyDatasetAssociationAnnotationAssociation)
         backup.append(historyDatasetCollectionAssociation)
 
     if backup2extract == "datasets" or backup2extract == "all":
         datasets, num_dat, clean_num_dat = retrieve_datasets(nd, np)
         datasetPermissions = retrieve_datasetPermissions(nd, np)
+        datasetCollections, num_coll = retrieve_datasetCollections(nd, np)
         if verbose:
             print("\n####################################\n")
             print("%s DATASETS RETRIEVED" %(num_dat))
+            print("%s DATASETS COLLECTIONS RETRIEVED" %(num_coll))
             print("%s CLEAN DATASETS PROCESSED" %(clean_num_dat))
         backup.append(datasets)
         backup.append(datasetPermissions)
+        backup.append(datasetCollections)
 
     if backup2extract == "workflows" or backup2extract == "all":
         workflows, num_wf = retrieve_workflows(nd, np)
