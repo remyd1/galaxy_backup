@@ -814,6 +814,7 @@ restore_deleted, verbose):
                 for dc_element in dc['elements']:
                     dc_element_index = dc_element['element_index']
                     dc_element_identifier = dc_element['element_identifier']
+                    dc_element_type = dc_element['element_type']
                     try:
                         new_dc.elements.append(sa_session.query(\
                         DatasetCollectionElement).filter_by(\
@@ -822,11 +823,22 @@ restore_deleted, verbose):
                     except:
                         # DatasetCollectionElement not found
                         # (does not exist yet)
-                        new_dc_element = DatasetCollectionElement()
-                        new_dc_element.element_identifier = \
-                        dc_element_identifier
-                        new_dc_element.element_index = \
-                        dc_element_index
+                        if dc_element_type == "hda":
+                            element = HistoryDatasetAssociation()
+                        elif dc_element_type == "ldda":
+                            element = LibraryDatasetDatasetAssociation()
+                        elif dc_element_type == "dataset_collection":
+                            element = DatasetCollection()
+                        else:
+                            if verbose:
+                                print("Unknow element type in "+\
+                                "DatasetCollection id %s" %(dc['id']))
+                                continue
+                        new_dc_element = DatasetCollectionElement(\
+                        collection=new_dc, element=element, \
+                        element_index=dc_element_index, \
+                        element_identifier=dc_element_identifier, \
+                        )
                         sa_session.add(new_dc_element)
             sa_session.add(new_dc)
             sa_session.flush()
