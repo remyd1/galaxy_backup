@@ -837,27 +837,20 @@ if __name__ == '__main__':
             print("%s ROLES RETRIEVED" %(num_roles))
             print("%s GROUPS RETRIEVED" %(num_groups))
         backup.append(users)
-        backup.append(api_keys)
+        keyquestion = raw_input("Do you want to backup API keys [Y]/n ?")
+        if keyquestion != "n" and keyquestion != "N":
+            backup.append(api_keys)
         backup.append(roles)
         backup.append(groups)
         backup.append(associations)
 
     if backup2extract == "histories" or backup2extract == "all":
         histories, num_hist, clean_num_hist = retrieve_histories(nd, np)
-        historyDatasetAssociation, num_hda = \
-        retrieve_historyDatasetAssociation(nd)
-        historyDatasetCollectionAssociation, num_hdca = \
-        retrieve_historyDatasetCollectionAssociation(nd, verbose)
         if verbose:
             print("\n####################################\n")
             print("%s HISTORIES RETRIEVED" %(num_hist))
             print("%s CLEAN HISTORIES PROCESSED" %(clean_num_hist))
-            print("%s HISTORIES DATASETS ASSOCIATIONS RETRIEVED" %(num_hda))
-            print("%s HISTORIES DATASETS COLLECTIONS ASSOCIATIONS RETRIEVED" \
-            %(num_hdca))
         backup.append(histories)
-        backup.append(historyDatasetAssociation)
-        backup.append(historyDatasetCollectionAssociation)
 
     if backup2extract == "datasets" or backup2extract == "all":
         datasets, num_dat, clean_num_dat = retrieve_datasets(nd, np)
@@ -871,6 +864,20 @@ if __name__ == '__main__':
         backup.append(datasets)
         backup.append(datasetPermissions)
         backup.append(datasetCollections)
+
+    # Adding associations after histories and datasets if presents.
+    if backup2extract == "histories" or backup2extract == "all":
+        historyDatasetAssociation, num_hda = \
+        retrieve_historyDatasetAssociation(nd)
+        historyDatasetCollectionAssociation, num_hdca = \
+        retrieve_historyDatasetCollectionAssociation(nd, verbose)
+        if verbose:
+            print("%s HISTORIES DATASETS ASSOCIATIONS RETRIEVED" %(num_hda))
+            print("%s HISTORIES DATASETS COLLECTIONS ASSOCIATIONS RETRIEVED" \
+            %(num_hdca))
+        backup.append(historyDatasetAssociation)
+        backup.append(historyDatasetCollectionAssociation)
+
 
     if backup2extract == "workflows" or backup2extract == "all":
         workflows, num_wf = retrieve_workflows(nd, np, verbose)
