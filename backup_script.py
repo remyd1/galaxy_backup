@@ -695,7 +695,7 @@ def retrieve_workflows(nd, np, verbose):
                 if wf.user is not None:
                     wfdict['user__email'] = wf.user.email
             if hasattr(wf, 'uuid'):
-                wfdict['uuid'] = wf.uuid
+                wfdict['uuid'] = str(wf.uuid)
             wfdict['wst_id'] = []
             if hasattr(wf, 'steps'):
                 for wst in wf.steps:
@@ -905,6 +905,8 @@ if __name__ == '__main__':
         backup.append(libraryDatasetPermissions)
         backup.append(libraryDatasetDatasetAssociationPermissions)
 
+    # for debug
+    #~ print repr(backup)
 
     backup = dumps(backup, default=decimal_default, sort_keys=True, indent=4)
 
