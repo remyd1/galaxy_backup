@@ -565,13 +565,13 @@ def create_hdcas(HDCAs, restore_purged, restore_deleted, verbose):
                 print("A new HistoryDatasetCollectionAssociation has been "+\
                 "discovered: %s" %(the_hdca['name']))
             new_hdca = HistoryDatasetCollectionAssociation()
-            new_hdca.history_content_type = the_hdca['history_content_type']
+            #~ new_hdca.history_content_type = the_hdca['history_content_type']
             new_hdca.deleted = the_hdca['deleted']
             new_hdca.visible = the_hdca['visible']
             new_hdca.name = the_hdca['name']
             new_hdca.hid = the_hdca['hid']
             new_hdca.history = the_history
-            new_hdca.DatasetCollection.collection_type = \
+            new_hdca.collection_type = \
             the_hdca['collection_type']
             #~ new_hdca.xxx = the_hdca['type']
             sa_session.add(new_hdca)
@@ -713,12 +713,13 @@ def create_datasets(datasets, restore_purged, restore_deleted, verbose):
         print("\n ####### DATASETS #######")
     for dataset in datasets:
         #check if this dataset already exists
-        dataset_e = 0
-        if dataset['external_filename'] is not "null":
-            dataset_e = sa_session.query(Dataset).\
-            filter(Dataset.external_filename == dataset['external_filename']).\
-            filter(Dataset.id == dataset['id']).count()
-        if dataset_e == 0:
+        #~ if dataset['external_filename'] is not "null":
+        (dataset_e, ), = sa_session.query(exists().\
+        where(Dataset.external_filename == dataset['external_filename']).\
+        where(Dataset.file_size == dataset['file_size']).\
+        where(Dataset.state == dataset['state']).\
+        where(Dataset.id == dataset['id']))
+        if dataset_e is False:
             if verbose:
                 print("A new dataset has been discovered; id: %s" \
                 %(dataset['id']))
@@ -1240,7 +1241,7 @@ if __name__ == '__main__':
     #~ if verbose:
     print("\nPlease for a new instance of galaxy, run 'sh run.sh' at least"+\
     " one time (copy config/galaxy.ini.sample to config/galaxy.ini and "+\
-    "edit it before launching galaxy\n")
+    "edit it before launching galaxy)\n")
 
     restore_purged = True
     restore_deleted = True
