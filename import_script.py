@@ -27,6 +27,23 @@ from json import loads
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.exc import MultipleResultsFound
 
+import warnings
+warnings.filterwarnings("ignore")
+
+# can not catch correct warnings (category/message/object)...
+#~ def fxn():
+    #~ warnings.warn("import", ImportWarning)
+#~ with warnings.catch_warnings(record=True) as w:
+    # Cause all warnings to always be triggered.
+    #~ warnings.simplefilter("ignore", UserWarning)
+    #~ fxn()
+    #~ print repr(w)
+    #~ # Verify some things
+    #~ assert len(w) > 0, 'No caught warnings'
+    #~ assert issubclass(w[-1].category, UserWarning)
+    #~ assert "deprecated" in str(w[-1].message)
+
+
 def check_galaxy_root_dir():
     """
     Need this function before importing galaxy model and db_shell
@@ -129,6 +146,16 @@ def parse_json_data(jsondata, restore_purged, restore_deleted, verbose):
             datasetPermissions = type_of_backup['datasetPermissions']
             create_datasetPermissions(datasetPermissions, restore_purged, \
             restore_deleted, verbose)
+        elif type_of_backup.has_key('datasetCollections'):
+            datasetCollections = type_of_backup['datasetCollections']
+            create_datasetCollections(datasetCollections, restore_purged, \
+            restore_deleted, verbose)
+        elif type_of_backup.has_key('historyDatasetCollectionAssociation'):
+            HDCAs = type_of_backup['historyDatasetCollectionAssociation']
+            create_hdcas(HDCAs, restore_purged, restore_deleted, verbose)
+        elif type_of_backup.has_key('historyDatasetAssociation'):
+            HDAs = type_of_backup['historyDatasetAssociation']
+            create_hdas(HDAs, restore_purged, restore_deleted, verbose)
         elif type_of_backup.has_key('libraryFolders'):
             libraryFolders = type_of_backup['libraryFolders']
             create_libraryFolders(libraryFolders, restore_purged, \
@@ -289,10 +316,13 @@ def create_gras(GRAs, restore_purged, restore_deleted, verbose):
             new_gra = GroupRoleAssociation(the_group, the_role)
             sa_session.add(new_gra)
             sa_session.flush()
+            the_group = ""
+            the_role = ""
         else:
             if verbose:
-                print("This GroupRoleAssociation already exists group(%s),"+\
-                "role(%s) !" %(gra['group__name'], gra['role__name']))
+                print("This GroupRoleAssociation already exists "+\
+                "group(%s),role(%s) !" %(gra['group__name'], \
+                gra['role__name']))
 
 
 
@@ -326,6 +356,8 @@ def create_ugas(UGAs, restore_purged, restore_deleted, verbose):
             new_uga = UserGroupAssociation(the_user, the_group)
             sa_session.add(new_uga)
             sa_session.flush()
+            the_group = ""
+            the_user = ""
         else:
             if verbose:
                 print("This UserGroupAssociation already exists group(%s),"+\
@@ -362,6 +394,9 @@ def create_uras(URAs, restore_purged, restore_deleted, verbose):
                 continue
             new_ura = UserRoleAssociation(the_user, the_role)
             sa_session.add(new_ura)
+            sa_session.flush()
+            the_role = ""
+            the_user = ""
         else:
             if verbose:
                 print("This UserRoleAssociation already exists role(%s),"+\
@@ -373,11 +408,19 @@ def create_apikeys(apikeys, restore_purged, restore_deleted, verbose):
     """
     Create APIKeys()
     """
-    if verbose:
-        print("\n ####### Sorry. APIKeys will not be created for security "+\
-        "reason #######")
-        print("\n _______________ Please consider to regenerate these "+\
-        "keys _____________")
+    keyquestion = raw_input("Do you want to restore API keys [Y]/n ?")
+    if keyquestion != "n" and keyquestion != "N":
+        for APIkey in apikeys:
+            (the_apikey_e, ), = sa_session.query(exists().\
+            where(APIKeys.key == APIkey['key']).\
+            where(APIKeys.user_id == APIkey['user_id']))
+            if the_apikey_e is False:
+                new_apikey = APIKeys()
+                new_apikey.user_id = APIkey['user_id']
+                new_apikey.key = APIkey['key']
+                new_apikey.id = APIkey['id']
+                sa_session.add(new_apikey)
+                sa_session.flush()
 
 
 
@@ -397,10 +440,11 @@ def create_histories(histories, restore_purged, restore_deleted, verbose):
                 print("You have an error when trying to retrieving the owner"+\
                 " of this history (%s):%s" %(history['name'], e))
                 continue
-            ## retrieve history if it exists
+            ## retrieve history if it exists - issue with multiple
+            ## 'Unnamed history'
             history_e = sa_session.query(History).filter(History.name == \
             history['name']).filter(User.email == history['user__email']).\
-            count()
+            filter(History.id == history['id']).count()
             if history_e == 0:
                 if verbose:
                     print("A new history has been discovered: %s" \
@@ -432,12 +476,106 @@ def create_histories(histories, restore_purged, restore_deleted, verbose):
                     sa_session.add(new_history)
                 elif restore_purged is True and history['purged'] is True:
                     sa_session.add(new_history)
-
                 sa_session.flush()
+
             else:
                 if verbose:
                     print("This History seems to already exists '%s' (%s) !" \
                     %(history['name'], history['user__email']))
+            the_owner = ""
+
+
+
+def create_hdas(HDAs, restore_purged, restore_deleted, verbose):
+    """
+    Create history dataset associations HistoryDatasetAssociation
+    from backup json file (histories or all)
+    """
+    if verbose:
+        print("\n ####### HistoryDatasetAssociation #######")
+    for the_hda in HDAs:
+        # check if the corresponding hda already exists
+        (the_hda_e, ), = sa_session.query(exists().\
+        where(HistoryDatasetAssociation.hid == the_hda['hid']).\
+        where(HistoryDatasetAssociation.info == the_hda['misc_info']).\
+        where(HistoryDatasetAssociation.blurb == the_hda['misc_blurb']).\
+        where(HistoryDatasetAssociation.name == the_hda['name']))
+        # check if the corresponding history already exists
+        the_history = sa_session.query(History).get(the_hda['history_id'])
+        if the_hda_e is False:
+            if verbose:
+                print("A new HistoryDatasetAssociation has been "+\
+                "discovered: %s" %(the_hda['name']))
+            new_hda = HistoryDatasetAssociation()
+            new_hda.hid = the_hda['hid']
+            new_hda.info = the_hda['misc_info']
+            new_hda.blurb = the_hda['misc_blurb']
+            new_hda.name = the_hda['name']
+            new_hda.peek = the_hda['peek']
+            new_hda.extension = the_hda['file_ext']
+            new_hda.dbkey=the_hda['metadata_dbkey']
+            new_hda.visible = the_hda['visible']
+            new_hda.deleted = the_hda['deleted']
+            new_hda.history = the_history
+            # Get the corresponding dataset
+            try:
+                the_dataset = sa_session.query(Dataset).filter(\
+                Dataset.uuid == the_hda['uuid']).one()
+                new_hda.dataset = the_dataset
+                new_hda.state = the_hda['state']
+                new_hda.history_content_type = the_hda['history_content_type']
+            except:
+                if verbose:
+                    print("...But the corresponding dataset does not exist.")
+                pass
+            # Get the corresponding ldda
+            try:
+                new_hda.copied_from_library_dataset_dataset_association.id = \
+                the_hda['copied_from_ldda_id']
+            except:
+                pass
+            new_hda.purged = the_hda['purged']
+            new_hda.create_time = datetime.datetime.strptime(\
+            the_hda['create_time'], "%Y-%m-%dT%H:%M:%S.%f")
+            new_hda.update_time = datetime.datetime.strptime(\
+            the_hda['update_time'], "%Y-%m-%dT%H:%M:%S.%f")
+            sa_session.add(new_hda)
+            sa_session.flush()
+            the_dataset = ""
+
+
+
+def create_hdcas(HDCAs, restore_purged, restore_deleted, verbose):
+    """
+    Create history dataset collection associations
+    HistoryDatasetCollectionAssociation
+    from backup json file (histories or all)
+    """
+    if verbose:
+        print("\n ####### HistoryDatasetCollectionAssociation #######")
+    for the_hdca in HDCAs:
+        # check if the corresponding hdca already exists
+        (the_hdca_e, ), = sa_session.query(exists().\
+        where(HistoryDatasetCollectionAssociation.hid == the_hdca['hid']).\
+        where(HistoryDatasetCollectionAssociation.name == the_hdca['name']))
+        # check if the corresponding history already exists
+        the_history = sa_session.query(History).get(the_hdca['history_id'])
+        if the_hdca_e is False:
+            if verbose:
+                print("A new HistoryDatasetCollectionAssociation has been "+\
+                "discovered: %s" %(the_hdca['name']))
+            new_hdca = HistoryDatasetCollectionAssociation()
+            #~ new_hdca.history_content_type = the_hdca['history_content_type']
+            new_hdca.deleted = the_hdca['deleted']
+            new_hdca.visible = the_hdca['visible']
+            new_hdca.name = the_hdca['name']
+            new_hdca.hid = the_hdca['hid']
+            new_hdca.history = the_history
+            new_hdca.collection_type = \
+            the_hdca['collection_type']
+            #~ new_hdca.xxx = the_hdca['type']
+            sa_session.add(new_hdca)
+            sa_session.flush()
 
 
 
@@ -563,6 +701,7 @@ def create_workflows(workflows, restore_purged, restore_deleted, verbose):
             #~ elif workflow['model_class'] == "WorkflowInvocationStep":
                 #~ pass
         sa_session.flush()
+        stored = ""
 
 
 
@@ -574,12 +713,13 @@ def create_datasets(datasets, restore_purged, restore_deleted, verbose):
         print("\n ####### DATASETS #######")
     for dataset in datasets:
         #check if this dataset already exists
-        dataset_e = 0
-        if dataset['external_filename'] is not "null":
-            dataset_e = sa_session.query(Dataset).\
-            filter(Dataset.external_filename == dataset['external_filename']).\
-            filter(Dataset.id == dataset['id']).count()
-        if dataset_e == 0:
+        #~ if dataset['external_filename'] is not "null":
+        (dataset_e, ), = sa_session.query(exists().\
+        where(Dataset.external_filename == dataset['external_filename']).\
+        where(Dataset.file_size == dataset['file_size']).\
+        where(Dataset.state == dataset['state']).\
+        where(Dataset.id == dataset['id']))
+        if dataset_e is False:
             if verbose:
                 print("A new dataset has been discovered; id: %s" \
                 %(dataset['id']))
@@ -644,9 +784,65 @@ restore_deleted, verbose):
             sa_session.flush()
         else:
             if verbose:
-                print("This DatasetPermissions already exists dataset(%s),"+\
-                "role(%s) !" %(dp['dataset__external_filename'],\
-                dp['role__name']))
+                print("This DatasetPermissions already exists "+\
+                "dataset(%s),role(%s) !" %(\
+                dp['dataset__external_filename'], dp['role__name']))
+        the_dataset = ""
+        the_role = ""
+
+
+
+def create_datasetCollections(datasetCollections, restore_purged, \
+restore_deleted, verbose):
+    """
+    Create DatasetCollection objects from json backup file
+    'datasets' or 'all'
+    """
+    if verbose:
+        print("\n ####### DatasetCollections #######")
+    for dc in datasetCollections:
+        # check if it already exists (if db/table is empty...)
+        (dc_e, ), = sa_session.query(exists().\
+        where(DatasetCollection.id == dc['id']).\
+        where(DatasetCollection.collection_type == dc['collection_type']))
+        if dc_e is False:
+            new_dc = DatasetCollection()
+            new_dc.collection_type = dc['collection_type']
+            if dc.has_key('populated_state'):
+                new_dc.populated_state = dc['populated_state']
+            new_dc.id = dc['id']
+            if dc.has_key('elements'):
+                for dc_element in dc['elements']:
+                    dc_element_index = dc_element['element_index']
+                    dc_element_identifier = dc_element['element_identifier']
+                    dc_element_type = dc_element['element_type']
+                    try:
+                        new_dc.elements.append(sa_session.query(\
+                        DatasetCollectionElement).filter_by(\
+                        element_identifier=dc_element_identifier).filter_by(\
+                        element_index=dc_element_index).one())
+                    except:
+                        # DatasetCollectionElement not found
+                        # (does not exist yet)
+                        if dc_element_type == "hda":
+                            element = HistoryDatasetAssociation()
+                        elif dc_element_type == "ldda":
+                            element = LibraryDatasetDatasetAssociation()
+                        elif dc_element_type == "dataset_collection":
+                            element = DatasetCollection()
+                        else:
+                            if verbose:
+                                print("Unknow element type in "+\
+                                "DatasetCollection id %s" %(dc['id']))
+                                continue
+                        new_dc_element = DatasetCollectionElement(\
+                        collection=new_dc, element=element, \
+                        element_index=dc_element_index, \
+                        element_identifier=dc_element_identifier, \
+                        )
+                        sa_session.add(new_dc_element)
+            sa_session.add(new_dc)
+            sa_session.flush()
 
 
 
@@ -767,7 +963,6 @@ restore_deleted, verbose):
     if verbose:
         print("\n ####### libraryDatasetDatasetAssociations #######")
     for the_ldda in ldda:
-
         # check if this library already exists
         the_ldda_e = sa_session.query(LibraryDatasetDatasetAssociation).\
         filter(LibraryDatasetDatasetAssociation.name == the_ldda['name']).\
@@ -817,6 +1012,7 @@ restore_deleted, verbose):
             elif the_ldda['deleted'] is False:
                 sa_session.add(new_ldda)
             sa_session.flush()
+            the_dataset_e = ""
 
 
 def create_libraryFolders(libraryFolders, restore_purged, \
@@ -895,6 +1091,8 @@ restore_deleted, verbose):
             new_lp = LibraryPermissions(action, the_library, the_role)
             sa_session.add(new_lp)
             sa_session.flush()
+            the_library = ""
+            the_role = ""
         else:
             if verbose:
                 print("This LibraryPermission already exists")
@@ -934,6 +1132,8 @@ restore_purged, restore_deleted, verbose):
             new_lfp = LibraryFolderPermissions(action, the_lf, the_role)
             sa_session.add(new_lfp)
             sa_session.flush()
+            the_lf = ""
+            the_role = ""
         else:
             if verbose:
                 print("This LibraryFolderPermission already exists")
@@ -974,6 +1174,8 @@ restore_purged, restore_deleted, verbose):
             new_ldp = LibraryDatasetPermissions(action, the_ld, the_role)
             sa_session.add(new_ldp)
             sa_session.flush()
+            the_ld = ""
+            the_role = ""
         else:
             if verbose:
                 print("This LibraryDatasetPermissions already exists")
@@ -1020,6 +1222,8 @@ restore_deleted, verbose):
             the_ldda, the_role)
             sa_session.add(new_lddap)
             sa_session.flush()
+            the_ldda = ""
+            the_role = ""
         else:
             if verbose:
                 print("This LibraryDatasetDatasetAssociationPermissions "+\
@@ -1033,6 +1237,11 @@ if __name__ == '__main__':
     < Takes a JSON file to migrate the data in the new galaxy DB
     > Returns an import status for each element
     """
+
+    #~ if verbose:
+    print("\nPlease for a new instance of galaxy, run 'sh run.sh' at least"+\
+    " one time (copy config/galaxy.ini.sample to config/galaxy.ini and "+\
+    "edit it before launching galaxy)\n")
 
     restore_purged = True
     restore_deleted = True
@@ -1083,7 +1292,6 @@ if __name__ == '__main__':
             print("Ok, I will try to process this file.")
         else:
             sys.exit("Ok. So, try again!\n")
-
 
     jsondata = getjson(infile)
 
